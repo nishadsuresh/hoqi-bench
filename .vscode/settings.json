@@ -1,0 +1,33 @@
+{
+    "python.defaultInterpreterPath": "/home/nishadrobotics/venvs/hoqi-bench/bin/python3",
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestArgs": [
+        "tests"
+    ],
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.fixAll.ruff": "explicit",
+            "source.organizeImports.ruff": "explicit"
+        },
+        "editor.rulers": [
+            88,
+            100
+        ]
+    },
+    "ruff.lint.enable": true,
+    "ruff.organizeImports": true,
+    "mypy-type-checker.args": [
+        "--strict"
+    ],
+    "python.analysis.typeCheckingMode": "basic",
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/*.egg-info": true,
+        ".mypy_cache": true,
+        ".ruff_cache": true,
+        ".pytest_cache": true
+    }
+}

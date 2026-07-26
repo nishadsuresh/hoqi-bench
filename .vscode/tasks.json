@@ -1,0 +1,55 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "run tests",
+            "type": "shell",
+            "command": "${config:python.defaultInterpreterPath}",
+            "args": [
+                "-m",
+                "pytest",
+                "-v"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "run lint",
+            "type": "shell",
+            "command": "${config:python.defaultInterpreterPath}",
+            "args": [
+                "-m",
+                "ruff",
+                "check",
+                "."
+            ],
+            "group": "none",
+            "problemMatcher": []
+        },
+        {
+            "label": "make figures",
+            "type": "shell",
+            "command": "make",
+            "args": [
+                "figures"
+            ],
+            "group": "none",
+            "problemMatcher": []
+        },
+        {
+            "label": "run smoke sweep",
+            "type": "shell",
+            "command": "${config:python.defaultInterpreterPath}",
+            "args": [
+                "scripts/run_sweep.py",
+                "--config",
+                "configs/smoke.toml"
+            ],
+            "group": "none",
+            "problemMatcher": []
+        }
+    ]
+}

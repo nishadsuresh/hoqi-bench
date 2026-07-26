@@ -1,0 +1,11 @@
+{
+    "recommendations": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "ms-toolsai.jupyter",
+        "eamodio.gitlens",
+        "tamasfe.even-better-toml",
+        "ms-python.mypy-type-checker"
+    ]
+}
