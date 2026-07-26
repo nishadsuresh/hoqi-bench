@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 try:
-    import tomllib  # Python 3.11+
+    import tomllib  # type: ignore[import-not-found]  # Python 3.11+
 except ModuleNotFoundError:
     import tomli as tomllib  # Python 3.10 fallback -- see docs/journal/day00.md
 
@@ -95,7 +95,7 @@ def load_sweep_config(path: str | Path) -> SweepConfig:
     return _validate(raw, source=str(path))
 
 
-def _validate(raw: dict, source: str) -> SweepConfig:
+def _validate(raw: dict[str, object], source: str) -> SweepConfig:
     # ---- 1. Required top-level keys ----
     required_keys = {"axes", "baseline", "methods", "n_seeds", "tolerance"}
     missing = required_keys - raw.keys()
@@ -128,7 +128,9 @@ def _validate(raw: dict, source: str) -> SweepConfig:
             )
         for axis_name, values in grid_axes.items():
             if not isinstance(values, list) or len(values) == 0:
-                raise ConfigError(f"{source}: grids.{grid_name}.{axis_name} must be a non-empty list")
+                raise ConfigError(
+                    f"{source}: grids.{grid_name}.{axis_name} must be a non-empty list"
+                )
 
     if not isinstance(baseline, dict) or len(baseline) == 0:
         raise ConfigError(f"{source}: 'baseline' must be a non-empty table of parameter -> value")

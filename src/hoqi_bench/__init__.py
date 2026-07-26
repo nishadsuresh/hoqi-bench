@@ -7,4 +7,4 @@ research questions and methodology this package implements.
 
 from __future__ import annotations
 
-__version__ = "0.0.0"  # bumped to 0.1.0 at Day 7's package scaffold
+__version__ = "0.1.0"

@@ -13,10 +13,7 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-
 from hoqi_bench.config import ConfigError, SweepConfig, load_sweep_config
-
 
 # ---- 1. Happy path: the actual proposed main campaign config ----
 
