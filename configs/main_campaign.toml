@@ -1,0 +1,31 @@
+# Main campaign sweep config, per docs/experimental_design.md.
+# PROPOSED, NOT YET APPROVED -- see that document's "Approval requested"
+# section. Do not treat this as locked in until docs/PREREGISTRATION.md
+# (Day 6) commits to it.
+
+methods = ["raw_atan2", "kasa", "heydemann", "halir_flusser", "fitzgibbon", "taubin", "koning_wimmer_witkovsky"]
+n_seeds = 30
+tolerance = 0.01  # 1% relative RMS error, matching quadrature-interferometer-sim's validated threshold
+
+# "Typical hardware" operating point -- held constant for whichever
+# parameter isn't the one being swept in a given OFAT axis.
+[baseline]
+amplitude_ratio = 1.1       # Lehmann et al. 2025's reported typical value
+quadrature_error_rad = 0.1  # NOT paper-derived -- see experimental_design.md's flag
+dc_offset = 0.02            # fraction of amplitude A; NOT paper-derived -- see flag
+arc_fraction = 1.0          # full circle by default
+noise_std = 0.0             # noiseless by default
+
+# One-factor-at-a-time sweeps (Section 3 of experimental_design.md).
+[axes]
+amplitude_ratio = [1.0, 1.05, 1.1, 1.2, 1.3]
+quadrature_error_rad = [0.0, 0.05, 0.1, 0.2, 0.3]
+dc_offset = [0.0, 0.02, 0.05, 0.1]
+arc_fraction = [1.0, 0.5, 0.25, 0.1, 0.05]
+noise_std = [0.0, 0.01, 0.02, 0.04, 0.06]
+
+# The one full 2D cross Day 3's findings justify (arc coverage x noise
+# interact in ways neither does alone).
+[grids.arc_x_noise]
+arc_fraction = [1.0, 0.5, 0.25, 0.1, 0.05]
+noise_std = [0.0, 0.01, 0.02, 0.04, 0.06]

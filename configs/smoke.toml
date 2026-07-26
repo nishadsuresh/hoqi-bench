@@ -1,0 +1,14 @@
+# Tiny config for fast smoke-testing (Day 0's .vscode/tasks.json "run smoke
+# sweep" task, and Day 26's end-to-end smoke test). Not a real experiment --
+# 2 methods x 3 conditions x 5 seeds, per Day 26's stated smoke-test shape.
+
+methods = ["raw_atan2", "kasa"]
+n_seeds = 5
+tolerance = 0.01
+
+[baseline]
+amplitude_ratio = 1.1
+arc_fraction = 1.0
+
+[axes]
+amplitude_ratio = [1.0, 1.1, 1.3]
