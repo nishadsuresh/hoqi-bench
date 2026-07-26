@@ -1,9 +1,9 @@
 """
-Classic Heydemann (1981) distortion transforms: amplitude imbalance and
-quadrature phase error. See docs/derivations/heydemann.md for the from-
-scratch derivation these implement in reverse (the derivation recovers true
-phase FROM a distorted signal; these transforms produce the distortion in
-the first place, for the forward model).
+Classic Heydemann (1981) distortion transforms: amplitude imbalance,
+quadrature phase error, and DC offset. See docs/derivations/heydemann.md for
+the from-scratch derivation these implement in reverse (the derivation
+recovers true phase FROM a distorted signal; these transforms produce the
+distortion in the first place, for the forward model).
 
 Equation provenance: Heydemann 1981 (`refs/references.bib`, `Heydemann1981`)
 for the physical error model itself; docs/derivations/heydemann.md Section 2
@@ -13,9 +13,10 @@ composed (Q = I0 + A*g*sin(phi+eps)).
 Pipeline position: bound (via a closure over mean_intensity and the
 distortion magnitude) into `pipeline.Transform`-compatible functions and
 composed via `pipeline.apply_pipeline`, in the order documented and verified
-in `pipeline.py` -- quadrature_phase_error BEFORE amplitude_imbalance, not
-the reverse (see pipeline.py's module docstring for why the reverse order
-was tried first and found wrong).
+in `pipeline.py` -- quadrature_phase_error, THEN amplitude_imbalance, THEN
+dc_offset last (additive, commutes with the other two -- see pipeline.py's
+module docstring for the full ordering justification, including the wrong
+order tried first for the first two).
 """
 
 from __future__ import annotations
@@ -87,3 +88,28 @@ def quadrature_phase_error(
         + np.sin(quadrature_error_rad) * i_ac
     )
     return intensity_i, q_new
+
+
+def dc_offset(
+    intensity_i: FloatArray,
+    intensity_q: FloatArray,
+    dc_offset_i: float,
+    dc_offset_q: float,
+) -> tuple[FloatArray, FloatArray]:
+    """Adds independent constant biases to each channel -- models stray
+    light, detector bias voltage, or other per-channel DC contributions.
+    `dc_offset_i=dc_offset_q=0.0` is an exact identity (both channels
+    returned unchanged).
+
+    Design decision: purely additive, and applied LAST in the documented
+    pipeline order (pipeline.py) -- unlike amplitude_imbalance and
+    quadrature_phase_error, this transform doesn't multiply or mix with the
+    oscillating content, so it commutes with both of them algebraically;
+    applied last only to match the natural construction order (build the
+    distorted oscillation, then add each channel's bias on top), not because
+    the math requires a specific position.
+
+    Failure mode: none -- a pure additive shift has no singularities at any
+    parameter value.
+    """
+    return intensity_i + dc_offset_i, intensity_q + dc_offset_q
