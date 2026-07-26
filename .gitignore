@@ -9,5 +9,7 @@ build/
 dist/
 .coverage
 htmlcov/
-results/
 *.parquet
+# NOTE: results/ itself is NOT ignored -- final figures/tables referenced in
+# journal entries and the eventual paper are committed deliverables. Only
+# large, regenerable raw sweep output (*.parquet, above) is excluded.
