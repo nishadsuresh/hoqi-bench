@@ -41,11 +41,29 @@ includes. Everything else is one-factor-at-a-time against a fixed "typical hardw
 brought the real total down to 49 conditions, 10,290 runs — checked by the `total_runs()` calculator
 built today, not asserted by hand.
 
-## The two things flagged for a second look
+## Approval outcome
 
-Per this day's own instructions, the proposed ranges are presented for approval, not silently
-locked in. `docs/experimental_design.md`'s "Approval requested" section names the two ranges that
-are engineering judgment calls rather than numbers pulled from Lehmann et al. 2025 (quadrature phase
-error and DC offset), plus the hysteresis-magnitude sweep for the same reason, and the `total_runs =
-10,290` figure as worth a sanity check. Waiting on that before Day 6 locks anything into
-`docs/PREREGISTRATION.md`.
+Per this day's own instructions, the proposed ranges were presented for approval rather than
+silently locked in. Nishad approved both engineering-judgment ranges (quadrature phase error, DC
+offset) as originally proposed, and asked for the sweep to be expanded on four fronts: finer
+per-axis resolution, more Monte Carlo seeds, more interaction grids, and folding the two Day 20
+"stretch" methods (Taubin, Köning/Wimmer/Witkovský) into the required main-campaign method set.
+
+The approved design: 10-point axes for amplitude ratio, quadrature error, and noise (up from 5),
+9 points for arc coverage and 8 for DC offset (up from 5 and 4), 50 seeds per condition (up from
+30), three 2D interaction grids instead of one (adding amplitude-ratio-vs-quadrature-error and
+amplitude-ratio-vs-noise, alongside the original arc-vs-noise), and all 7 methods required rather
+than 5 required + 2 optional. New total: **337 conditions x 7 methods x 50 seeds = 117,950 runs**
+— still fast at this problem size (each run is a cheap ellipse fit on ~60 points), so no runtime
+concern despite the roughly 11x increase in scope.
+
+One thing worth flagging plainly rather than quietly absorbing into the bigger number: promoting
+Köning/Wimmer/Witkovský's method from "stretch, if time allows" to "required" runs ahead of how
+well that method is actually understood right now — `notes/koning_2014.md` is honest that it's
+currently title/abstract-level knowledge only, not enough to implement faithfully yet. This is now
+a real dependency for Day 19-20: either get real access to that 2014 paper before implementing it,
+or build a best-effort version explicitly labeled as an approximation rather than a faithful
+reproduction. Making required something that isn't fully understood yet is a real scope risk this
+project's own documentation standard (equation provenance, honest failure-mode notes) would call
+out if it showed up in someone else's plan — so it's named here rather than quietly carried
+forward.

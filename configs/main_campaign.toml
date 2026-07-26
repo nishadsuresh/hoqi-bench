@@ -1,10 +1,10 @@
 # Main campaign sweep config, per docs/experimental_design.md.
-# PROPOSED, NOT YET APPROVED -- see that document's "Approval requested"
-# section. Do not treat this as locked in until docs/PREREGISTRATION.md
-# (Day 6) commits to it.
+# APPROVED 2026-07-26 (expanded per Nishad's request: finer resolution,
+# 30->50 seeds, 3 interaction grids, Taubin/Koning promoted to required
+# methods). See docs/PREREGISTRATION.md (Day 6) for the committed version.
 
 methods = ["raw_atan2", "kasa", "heydemann", "halir_flusser", "fitzgibbon", "taubin", "koning_wimmer_witkovsky"]
-n_seeds = 30
+n_seeds = 50
 tolerance = 0.01  # 1% relative RMS error, matching quadrature-interferometer-sim's validated threshold
 
 # "Typical hardware" operating point -- held constant for whichever
@@ -18,14 +18,21 @@ noise_std = 0.0             # noiseless by default
 
 # One-factor-at-a-time sweeps (Section 3 of experimental_design.md).
 [axes]
-amplitude_ratio = [1.0, 1.05, 1.1, 1.2, 1.3]
-quadrature_error_rad = [0.0, 0.05, 0.1, 0.2, 0.3]
-dc_offset = [0.0, 0.02, 0.05, 0.1]
-arc_fraction = [1.0, 0.5, 0.25, 0.1, 0.05]
-noise_std = [0.0, 0.01, 0.02, 0.04, 0.06]
+amplitude_ratio = [1.0, 1.02, 1.05, 1.1, 1.15, 1.2, 1.25, 1.3, 1.4, 1.5]
+quadrature_error_rad = [0.0, 0.02, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5]
+dc_offset = [0.0, 0.01, 0.02, 0.05, 0.08, 0.1, 0.15, 0.2]
+arc_fraction = [1.0, 0.75, 0.5, 0.35, 0.25, 0.15, 0.1, 0.05, 0.02]
+noise_std = [0.0, 0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.08, 0.1]
 
-# The one full 2D cross Day 3's findings justify (arc coverage x noise
-# interact in ways neither does alone).
+# Three 2D interaction grids (Section 3 of experimental_design.md).
 [grids.arc_x_noise]
-arc_fraction = [1.0, 0.5, 0.25, 0.1, 0.05]
-noise_std = [0.0, 0.01, 0.02, 0.04, 0.06]
+arc_fraction = [1.0, 0.75, 0.5, 0.35, 0.25, 0.15, 0.1, 0.05, 0.02]
+noise_std = [0.0, 0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.08, 0.1]
+
+[grids.amplitude_x_quadrature]
+amplitude_ratio = [1.0, 1.02, 1.05, 1.1, 1.15, 1.2, 1.25, 1.3, 1.4, 1.5]
+quadrature_error_rad = [0.0, 0.02, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5]
+
+[grids.amplitude_x_noise]
+amplitude_ratio = [1.0, 1.02, 1.05, 1.1, 1.15, 1.2, 1.25, 1.3, 1.4, 1.5]
+noise_std = [0.0, 0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.08, 0.1]

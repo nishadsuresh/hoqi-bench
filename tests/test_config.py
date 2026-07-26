@@ -8,6 +8,7 @@ specific, useful error, not a generic one or a silent partial load)."""
 from __future__ import annotations
 
 import sys
+from functools import reduce
 from pathlib import Path
 
 import pytest
@@ -21,23 +22,34 @@ from hoqi_bench.config import ConfigError, SweepConfig, load_sweep_config
 
 
 def test_main_campaign_config_loads_and_computes_expected_total_runs():
-    """docs/experimental_design.md Section 3 hand-computes total_runs=10290
-    for this exact config -- this test confirms the loader agrees with that
-    hand computation, not just that it loads without crashing."""
+    """docs/experimental_design.md Section 3 hand-computes total_runs=117950
+    for the approved, expanded config -- this test confirms the loader
+    agrees with that hand computation, not just that it loads without
+    crashing. (Approved 2026-07-26: expanded from the original 10290-run
+    proposal per Nishad's request -- finer resolution, 30->50 seeds, 3
+    interaction grids, Taubin/Koning promoted to required methods.)"""
     config_path = Path(__file__).resolve().parent.parent / "configs" / "main_campaign.toml"
     config = load_sweep_config(config_path)
 
     assert isinstance(config, SweepConfig)
     assert len(config.methods) == 7
-    assert config.n_seeds == 30
+    assert config.n_seeds == 50
     assert config.tolerance == 0.01
 
-    # 5(g) + 5(eps) + 4(dc) + 5(arc) + 5(noise) + 25(arc x noise grid) = 49 conditions
-    n_conditions = sum(len(v) for v in config.axes.values())
-    n_conditions += 5 * 5  # the one grid
-    assert n_conditions == 49
+    # 10(g) + 10(eps) + 8(dc) + 9(arc) + 10(noise) = 47 OFAT conditions
+    n_ofat = sum(len(v) for v in config.axes.values())
+    assert n_ofat == 47
 
-    assert config.total_runs() == 49 * 7 * 30
+    # arc_x_noise (9*10=90) + amplitude_x_quadrature (10*10=100) + amplitude_x_noise (10*10=100)
+    n_grid = sum(
+        reduce(lambda a, b: a * b, (len(v) for v in grid.values()), 1)
+        for grid in config.grids.values()
+    )
+    assert n_grid == 290
+
+    assert n_ofat + n_grid == 337
+    assert config.total_runs() == 337 * 7 * 50
+    assert config.total_runs() == 117_950
 
 
 def test_smoke_config_loads():
