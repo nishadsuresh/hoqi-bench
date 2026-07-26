@@ -14,10 +14,10 @@ model here. The Gaussian model is used as the conventional starting point in
 this literature (matching Heydemann-era and most subsequent ellipse-fitting
 papers) because it is simple, well-understood, and analytically tractable
 for the classic distortions this is combined with -- not because it is
-physically the most accurate choice. Day 12 (`poisson_noise`, in this same
-module once built) implements the physically correct, signal-dependent
-alternative, and RQ4 (`docs/PREREGISTRATION.md`) directly compares the two
-rather than picking one and ignoring the difference.
+physically the most accurate choice. `poisson_noise` (below, added Day 12)
+implements the physically correct, signal-dependent alternative, and RQ4
+(`docs/PREREGISTRATION.md`) directly compares the two rather than picking
+one and ignoring the difference.
 
 Equation provenance: matches `quadrature-interferometer-sim`'s
 `shot_noise_std`/`thermal_noise_std` parameters in `simulate_interferometer`
@@ -76,3 +76,63 @@ def gaussian_noise(
     noise_i = rng.normal(0.0, noise_std, size=intensity_i.shape)
     noise_q = rng.normal(0.0, noise_std, size=intensity_q.shape)
     return intensity_i + noise_i, intensity_q + noise_q
+
+
+def poisson_noise(
+    intensity_i: FloatArray,
+    intensity_q: FloatArray,
+    photon_scale: float | None,
+    seed: int | None = None,
+) -> tuple[FloatArray, FloatArray]:
+    """Physically correct, SIGNAL-DEPENDENT shot noise: variance scales with
+    instantaneous intensity, unlike `gaussian_noise`'s fixed variance. Built
+    as a genuinely separate transform (per this module's docstring) --
+    Day 11's `gaussian_noise` is NOT replaced or modified by this function,
+    so RQ4 (docs/PREREGISTRATION.md) can compare both on identical
+    underlying signals.
+
+    Physical basis: photon arrival at a detector over a fixed integration
+    time is a Poisson process -- the probability of detecting exactly k
+    photons when lambda are expected is Poisson(lambda), which has the
+    defining property Var = mean = lambda. `photon_scale` (photons per unit
+    of this simulator's dimensionless intensity) converts continuous
+    intensity into a photon-count scale: count = intensity * photon_scale,
+    Poisson noise is drawn on that count, then converted back to intensity
+    units by dividing by photon_scale. Working through the variance
+    algebra: Var(count) = lambda = intensity*photon_scale (Poisson's
+    defining property), so Var(intensity_domain_noise) =
+    Var(count)/photon_scale^2 = intensity/photon_scale -- variance
+    proportional to intensity, exactly the signal-dependent property real
+    shot noise has and `gaussian_noise` does not.
+
+    `photon_scale=None` is this transform's identity case (returned
+    unchanged, no randomness drawn) -- there is no finite `photon_scale`
+    value that turns off shot noise the way `noise_std=0` turns off Gaussian
+    noise (any real detector receiving any nonzero light has SOME shot
+    noise); `None` is used instead to mean "not modeling this effect,"
+    matching this project's general "zero/None means off" convention for
+    every other transform without pretending shot noise literally vanishes
+    at some intensity.
+
+    Failure mode: `photon_scale` must be positive (excluding None) and
+    `intensity * photon_scale` must be non-negative for Poisson's lambda
+    parameter to be valid -- this simulator's intensity is always
+    non-negative by construction (mean_intensity*(1 +/- contrast) with
+    contrast <= 1), so this isn't expected to be hit in practice, but is
+    not defended against here with an explicit guard, since a negative
+    intensity reaching this function would indicate a bug further upstream
+    worth seeing fail loudly (as a numpy warning/NaN), not silently caught.
+    """
+    if photon_scale is None:
+        return intensity_i, intensity_q
+
+    rng = np.random.default_rng(seed)
+
+    def _apply(intensity: FloatArray) -> FloatArray:
+        photon_count_mean = intensity * photon_scale
+        sampled_count = rng.poisson(photon_count_mean).astype(np.float64)
+        return sampled_count / photon_scale
+
+    # Separate rng draws for I and Q, same independence rationale as
+    # gaussian_noise above.
+    return _apply(intensity_i), _apply(intensity_q)

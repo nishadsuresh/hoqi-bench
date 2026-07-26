@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from hoqi_bench.noise import gaussian_noise
+from hoqi_bench.noise import gaussian_noise, poisson_noise
 
 
 def test_identity_at_zero_noise() -> None:
@@ -76,3 +76,78 @@ def test_i_and_q_noise_are_independent() -> None:
     # 5-sigma bound at this sample size
     tolerance = 5 / np.sqrt(n_samples)
     assert abs(correlation) < tolerance
+
+
+# ---- Poisson shot noise: the physically correct, signal-dependent model ----
+
+
+def test_poisson_identity_at_none() -> None:
+    intensity_i = np.full(1000, 1.0)
+    intensity_q = np.full(1000, 1.0)
+    new_i, new_q = poisson_noise(intensity_i, intensity_q, photon_scale=None, seed=0)
+    assert np.array_equal(new_i, intensity_i)
+    assert np.array_equal(new_q, intensity_q)
+
+
+def test_poisson_variance_is_proportional_to_intensity() -> None:
+    """THE defining physical property of shot noise, checked directly: at a
+    fixed photon_scale, the noise variance (in intensity units) must scale
+    LINEARLY with intensity -- i.e. variance/intensity must be
+    approximately constant (equal to 1/photon_scale) across several
+    different intensity levels, not just correct at one arbitrarily chosen
+    level."""
+    photon_scale = 1_000_000.0
+    n_samples = 50_000
+    intensity_levels = [0.2, 0.5, 1.0, 1.5, 1.9]  # spans this simulator's realistic I/Q range
+
+    measured_variance_over_intensity = []
+    for level in intensity_levels:
+        baseline = np.full(n_samples, level)
+        new_i, _ = poisson_noise(baseline, baseline, photon_scale=photon_scale, seed=7)
+        added_noise = new_i - baseline
+        measured_variance_over_intensity.append(np.var(added_noise) / level)
+
+    expected_ratio = 1.0 / photon_scale
+    for level, ratio in zip(intensity_levels, measured_variance_over_intensity, strict=True):
+        rel_error = abs(ratio - expected_ratio) / expected_ratio
+        assert rel_error < 0.05, f"failed at intensity={level}: rel_error={rel_error:.3f}"
+
+
+def test_poisson_noise_deterministic_given_the_same_seed() -> None:
+    baseline = np.full(500, 1.0)
+    result_a = poisson_noise(baseline, baseline, photon_scale=10_000.0, seed=42)
+    result_b = poisson_noise(baseline, baseline, photon_scale=10_000.0, seed=42)
+    assert np.array_equal(result_a[0], result_b[0])
+    assert np.array_equal(result_a[1], result_b[1])
+
+
+def test_poisson_noise_converges_to_gaussian_shape_at_high_photon_count() -> None:
+    """A real physics check, not just a code-ran check: the Central Limit
+    Theorem guarantees Poisson(lambda) approaches a Gaussian SHAPE as
+    lambda grows (its skewness is exactly 1/sqrt(lambda), which -> 0).
+    Confirms the implementation genuinely behaves like Poisson noise --
+    not, for instance, a fixed-shape noise source that happens to have the
+    right variance scaling but the wrong distribution shape -- by checking
+    skewness actually decreases as photon_scale (and therefore lambda)
+    increases, across several increasing scales."""
+    from scipy.stats import skew
+
+    n_samples = 200_000
+    intensity_level = 1.0
+    baseline = np.full(n_samples, intensity_level)
+
+    photon_scales = [10.0, 100.0, 1_000.0, 100_000.0]
+    measured_skewness = []
+    for scale in photon_scales:
+        new_i, _ = poisson_noise(baseline, baseline, photon_scale=scale, seed=11)
+        added_noise = new_i - baseline
+        measured_skewness.append(abs(skew(added_noise)))
+
+    # skewness must be monotonically (non-strictly) decreasing as lambda grows,
+    # with small slack for finite-sample noise in the skewness estimate itself.
+    # NOT strict=True: consecutive-pair zip is intentionally offset by one.
+    for earlier, later in zip(measured_skewness, measured_skewness[1:]):  # noqa: B905
+        assert later <= earlier * 1.1
+
+    # and the largest photon_scale must be close to Gaussian (skewness ~ 0)
+    assert measured_skewness[-1] < 0.05
