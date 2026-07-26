@@ -1,8 +1,10 @@
 # Köning, Wimmer & Witkovský 2014 — "Ellipse fitting by nonlinear constraints to demodulate quadrature homodyne interferometer signals and to determine the statistical uncertainty of the interferometric phase"
 
-**Access:** SECONDARY / title-and-metadata level only. Full text not accessed (IOPscience
-paywalled). Bibliographic details (title, journal, volume/issue/article-number, DOI) were
-confirmed directly against the primary IOPscience page.
+**Access:** SECONDARY, upgraded 2026-07-26. The original 2014 paper itself is still not accessed
+(IOPscience paywalled) — bibliographic details were confirmed directly against the primary
+IOPscience page. However, the actual algorithm FAMILY this paper introduced is now understood via
+a real primary source: the CRAN `OEFPIL` R package manual (open access, fetched and read in full),
+which explicitly generalizes this method. See the "Update 2026-07-26" section below.
 
 ## Important correction to the reading list
 The build plan's reading list names this reference as **"Kok et al. 2014"**. That author
@@ -33,13 +35,37 @@ other classic fitting papers in this reading list appear to address.
   (power-law residual, hysteresis) at all — likely predates that specific framing (2014 vs. 2025),
   so probably not, but this is inference, not a confirmed fact from the text.
 
+## Update 2026-07-26: the algorithm family is now understood, via a real primary source
+
+Following Day 6's adversarial council review (which flagged "required but unread" as a real
+preregistration risk), found and read directly the manual for **OEFPIL** (CRAN R package, open
+access, PDF fetched and read in full), which explicitly generalizes this 2014 paper's method.
+**Access level upgraded from title/abstract-only to a real understanding of the algorithm family**,
+though still not the original paper's own ellipse-specific worked equations.
+
+What "nonlinear constraints" means, concretely: an **errors-in-variables (EIV) model** — unlike
+Halir & Flusser / Fitzgibbon / Kasa / Taubin, which all treat the fit as ordinary least squares on
+one implicit algebraic residual, this method treats **both I and Q as having measurement error**
+(not just distance-to-curve in an unweighted algebraic sense), and estimates the ellipse parameters
+by **iterated linearization via Taylor expansion** of the nonlinear implicit constraint around a
+current parameter estimate, refining via a covariance-weighted (Locally Best Linear Unbiased
+Estimation) update each iteration until convergence — a Gauss-Newton-style EIV estimator, built on
+Kubáček (2000)'s general framework, not a single-shot linear-algebra solve the way the other six
+methods are.
+
+This is enough to implement a faithful, real version of the algorithm FAMILY (iteratively-linearized
+covariance-weighted EIV ellipse fit) even without the original 2014 paper's specific tuning
+choices. The original paper's exact worked ellipse constraint equation and interferometry-specific
+covariance model would still improve fidelity if obtained, but this is no longer a blocking unknown
+for Day 19-20 — see `docs/PREREGISTRATION.md`'s updated fallback plan.
+
 ## Open questions
-- This paper's actual method (what "nonlinear constraints" means concretely, as opposed to Halir &
-  Flusser / Fitzgibbon's linear reformulation) is not understood beyond the title — if this method
-  is implemented as "Method 7" (mentioned as a possible Day 20 addition, "bias-corrected
-  ellipse-specific fit"), real access to the paper would be needed first; right now there isn't
-  enough here to implement it correctly, only enough to know it exists and is on-topic.
+- The original paper's specific covariance model (how I/Q measurement uncertainty is characterized
+  for a real HoQI detector, as opposed to a generic EIV setup) is still not confirmed — a reasonable
+  default (isotropic Gaussian noise, matching this project's own noise model from Day 11) will be
+  used unless/until better information is found.
 - The statistical-uncertainty-quantification angle this paper takes could be directly relevant to
-  Day 25's confidence-interval work — worth a real read before that day if time allows, since it
-  may be the single most relevant piece of prior art in this whole reading list for that specific
-  task, given it's explicitly about uncertainty on interferometric phase from ellipse fitting.
+  Day 25's confidence-interval work — worth a real read before that day if full paper access is ever
+  obtained, since it may be the single most relevant piece of prior art in this whole reading list
+  for that specific task, given it's explicitly about uncertainty on interferometric phase from
+  ellipse fitting.
