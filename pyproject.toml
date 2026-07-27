@@ -57,3 +57,15 @@ files = ["src/hoqi_bench", "tests", "scripts"]
 # silencing them here is scoped to exactly that, not a blanket ignore.
 module = ["scipy.*", "sympy.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# tomli is a conditional dependency (`tomli>=2.0; python_version < '3.11'`,
+# see pyproject.toml's [project] deps) -- stdlib `tomllib` covers 3.11+, so
+# tomli is correctly ABSENT from a real 3.11 install. But config.py's
+# `except ModuleNotFoundError: import tomli as tomllib` fallback still
+# imports it, and mypy resolves imports against what's actually installed,
+# not against the conditional marker -- caught by running mypy under an
+# actual Python 3.11 venv (CI's matrix includes 3.11; the local dev venv is
+# 3.10, where tomli is present, so this was invisible there).
+module = "tomli"
+ignore_missing_imports = true
