@@ -35,7 +35,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.linalg
 
-
 # ---- 1. Synthetic ellipse point generator ----
 
 
@@ -205,15 +204,23 @@ def normalized_coefficient_error(fitted: np.ndarray, true_coeffs: np.ndarray) ->
 
 
 def build_conditioning_spectrum() -> dict[str, dict]:
-    base = TrueEllipse(center_x=2.0, center_y=-1.0, semi_major=5.0, semi_minor=4.0, rotation_rad=0.3)
-    thin = TrueEllipse(center_x=2.0, center_y=-1.0, semi_major=8.0, semi_minor=0.4, rotation_rad=0.3)
-    very_thin = TrueEllipse(center_x=2.0, center_y=-1.0, semi_major=8.0, semi_minor=0.05, rotation_rad=0.3)
+    base = TrueEllipse(
+        center_x=2.0, center_y=-1.0, semi_major=5.0, semi_minor=4.0, rotation_rad=0.3
+    )
+    thin = TrueEllipse(
+        center_x=2.0, center_y=-1.0, semi_major=8.0, semi_minor=0.4, rotation_rad=0.3
+    )
+    very_thin = TrueEllipse(
+        center_x=2.0, center_y=-1.0, semi_major=8.0, semi_minor=0.05, rotation_rad=0.3
+    )
     return {
         "well_conditioned": dict(ellipse=base, n_points=60, arc=(0, 2 * np.pi), noise_std=0.02),
         "high_eccentricity": dict(ellipse=thin, n_points=60, arc=(0, 2 * np.pi), noise_std=0.02),
         "partial_arc_30deg": dict(ellipse=base, n_points=60, arc=(0, np.pi / 6), noise_std=0.02),
         "tight_clustering_3deg": dict(ellipse=base, n_points=60, arc=(0.7, 0.75), noise_std=0.02),
-        "near_degenerate_15deg": dict(ellipse=very_thin, n_points=60, arc=(0, np.deg2rad(15)), noise_std=0.001),
+        "near_degenerate_15deg": dict(
+            ellipse=very_thin, n_points=60, arc=(0, np.deg2rad(15)), noise_std=0.001
+        ),
     }
 
 
@@ -261,7 +268,10 @@ def run_study(n_seeds: int = 30) -> list[dict]:
 
 
 def print_report(results: list[dict]) -> None:
-    print(f"{'regime':<24}{'cond(D)':>10}{'FB fail%':>10}{'FB err':>16}{'H&F fail%':>11}{'H&F err':>16}")
+    print(
+        f"{'regime':<24}{'cond(D)':>10}{'FB fail%':>10}{'FB err':>16}"
+        f"{'H&F fail%':>11}{'H&F err':>16}"
+    )
     for r in results:
         fb_err = f"{r['fitzgibbon_mean_error']:.4f}+-{r['fitzgibbon_std_error']:.4f}"
         hf_err = f"{r['halir_flusser_mean_error']:.4f}+-{r['halir_flusser_std_error']:.4f}"
@@ -286,10 +296,17 @@ def demonstrate_clean_divergence() -> None:
     fb_coeffs, fb_status = fit_ellipse_fitzgibbon(x32, y32)
     hf_coeffs, hf_status = fit_ellipse_halir_flusser(x32, y32)
 
-    print("\n=== Clean divergence case: float32-precision data, 15-degree arc, high eccentricity ===")
+    print(
+        "\n=== Clean divergence case: float32-precision data, "
+        "15-degree arc, high eccentricity ==="
+    )
     print(f"Fitzgibbon (naive):      {fb_status}")
-    print(f"Halir & Flusser (stable): {hf_status}"
-          + (f", error={normalized_coefficient_error(hf_coeffs, true_coeffs):.4f}" if hf_coeffs is not None else ""))
+    hf_error_suffix = (
+        f", error={normalized_coefficient_error(hf_coeffs, true_coeffs):.4f}"
+        if hf_coeffs is not None
+        else ""
+    )
+    print(f"Halir & Flusser (stable): {hf_status}{hf_error_suffix}")
 
 
 def make_plot(results: list[dict], output_path: str) -> None:
@@ -327,7 +344,8 @@ def make_plot(results: list[dict], output_path: str) -> None:
             ha="center", fontsize=8, color="#2ca02c",
         )
 
-    ax.set_ylabel(f"Mean normalized conic-coefficient error (n={results[0]['n_seeds']} seeds/regime)")
+    n_seeds = results[0]["n_seeds"]
+    ax.set_ylabel(f"Mean normalized conic-coefficient error (n={n_seeds} seeds/regime)")
     ax.set_title(
         "Ellipse-fitting recovery error and failure rate across a conditioning spectrum\n"
         "(Fitzgibbon 1999 vs Halir & Flusser 1998, corrected selection rule)"
