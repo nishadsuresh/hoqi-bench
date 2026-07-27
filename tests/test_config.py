@@ -225,6 +225,93 @@ x = [1.0]
         load_sweep_config(config_file)
 
 
+def _full_baseline(samples_per_fit: str = "60") -> str:
+    """A baseline covering every REQUIRED_MODEL_PARAMS key, so a test can
+    isolate ONE malformed field without tripping the completeness check."""
+    return f"""
+[baseline]
+mean_intensity = 1.0
+contrast = 0.9
+amplitude_ratio = 1.1
+quadrature_error_rad = 0.1
+dc_offset = 0.02
+arc_fraction = 1.0
+noise_std = 0.0
+samples_per_fit = {samples_per_fit}
+hysteresis_magnitude = 0.0
+photon_scale = 1.0e7
+"""
+
+
+def test_rejects_float_samples_per_fit_in_baseline(tmp_path: Path) -> None:
+    """Caught by an end-to-end integration check AFTER the F9 fix, and it is
+    the same defect class F9 was: a config that validates cleanly and then
+    crashes at run time. TOML distinguishes `60` from `60.0`; only the
+    former survives reaching np.linspace(num=...) via arc.build_arc_ramp,
+    which raises TypeError on a float. Verified directly: before this check
+    existed, this exact config validated, resolved, and then raised
+    'TypeError: float object cannot be interpreted as an integer'."""
+    config_file = tmp_path / "float_n.toml"
+    config_file.write_text(f"""
+methods = ["kasa"]
+n_seeds = 5
+tolerance = 0.01
+{_full_baseline(samples_per_fit="60.0")}
+[axes]
+amplitude_ratio = [1.0, 1.1]
+""")
+    with pytest.raises(ConfigError, match="must be an integer"):
+        load_sweep_config(config_file)
+
+
+def test_rejects_float_samples_per_fit_in_a_swept_axis(tmp_path: Path) -> None:
+    """The same check must apply to swept VALUES, not just the baseline --
+    a float sneaking into the axis list is equally fatal downstream."""
+    config_file = tmp_path / "float_n_axis.toml"
+    config_file.write_text(f"""
+methods = ["kasa"]
+n_seeds = 5
+tolerance = 0.01
+{_full_baseline()}
+[axes]
+samples_per_fit = [20, 60.5, 100]
+""")
+    with pytest.raises(ConfigError, match="must be an integer"):
+        load_sweep_config(config_file)
+
+
+def test_rejects_boolean_samples_per_fit(tmp_path: Path) -> None:
+    """bool subclasses int in Python, so a naive isinstance(_, int) check
+    would let `samples_per_fit = true` through -- excluded explicitly."""
+    config_file = tmp_path / "bool_n.toml"
+    config_file.write_text(f"""
+methods = ["kasa"]
+n_seeds = 5
+tolerance = 0.01
+{_full_baseline(samples_per_fit="true")}
+[axes]
+amplitude_ratio = [1.0, 1.1]
+""")
+    with pytest.raises(ConfigError, match="must be an integer"):
+        load_sweep_config(config_file)
+
+
+def test_accepts_integer_samples_per_fit(tmp_path: Path) -> None:
+    """The positive case: a correctly-written integer config still loads,
+    confirming the new check rejects the bad case without over-rejecting."""
+    config_file = tmp_path / "int_n.toml"
+    config_file.write_text(f"""
+methods = ["kasa"]
+n_seeds = 5
+tolerance = 0.01
+{_full_baseline()}
+[axes]
+samples_per_fit = [20, 60, 1000]
+""")
+    config = load_sweep_config(config_file)
+    assert config.baseline["samples_per_fit"] == 60
+
+
 def test_rejects_baseline_missing_a_required_model_param(tmp_path: Path) -> None:
     """Weeks 1-2 audit finding F9: a config could previously validate
     cleanly while its baseline covered only the axis it happened to sweep,

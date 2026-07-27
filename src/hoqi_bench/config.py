@@ -66,6 +66,15 @@ REQUIRED_MODEL_PARAMS = frozenset({
 # a silent 1.11x error at A=0.9).
 FRACTION_OF_AMPLITUDE_PARAMS = frozenset({"dc_offset", "noise_std", "hysteresis_magnitude"})
 
+# Parameters that must be INTEGERS, not merely numbers. `samples_per_fit` is
+# a sample COUNT: it reaches `np.linspace(..., num=samples_per_fit)` via
+# `arc.build_arc_ramp`, which raises TypeError on a float. TOML distinguishes
+# `60` from `60.0`, so a config writing the latter would otherwise validate
+# cleanly and then crash mid-campaign -- the same "validates but is
+# unrunnable" defect class as Weeks 1-2 audit finding F9, caught by an
+# end-to-end integration check after that finding's original fix.
+INTEGER_MODEL_PARAMS = frozenset({"samples_per_fit"})
+
 
 class ConfigError(ValueError):
     """Raised for any malformed sweep config, with a message specific enough
@@ -183,6 +192,31 @@ def _validate(raw: dict[str, object], source: str) -> SweepConfig:
 
     if not isinstance(tolerance, (int, float)) or tolerance <= 0:
         raise ConfigError(f"{source}: 'tolerance' must be a positive number, got {tolerance!r}")
+
+    # Integer-only parameters, checked wherever a value for one can appear
+    # (baseline, an OFAT axis, or a grid axis) -- TOML's `60` and `60.0` are
+    # different types, and only the former survives reaching np.linspace.
+    # `bool` is excluded explicitly: it subclasses int in Python, so
+    # `samples_per_fit = true` would otherwise pass an isinstance(_, int) check.
+    def _check_integer_param(name: str, value: object, where: str) -> None:
+        if name not in INTEGER_MODEL_PARAMS:
+            return
+        if not isinstance(value, int) or isinstance(value, bool):
+            raise ConfigError(
+                f"{source}: {where} '{name}' must be an integer, got {value!r} "
+                f"({type(value).__name__}) -- it is a sample count and reaches "
+                f"np.linspace(num=...), which rejects non-integers"
+            )
+
+    for param_name, param_value in baseline.items():
+        _check_integer_param(param_name, param_value, "baseline")
+    for axis_name, values in axes.items():
+        for value in values:
+            _check_integer_param(axis_name, value, "axes")
+    for grid_name, grid_axes in grids.items():
+        for axis_name, values in grid_axes.items():
+            for value in values:
+                _check_integer_param(axis_name, value, f"grids.{grid_name}")
 
     # ---- 3. Cross-reference checks ----
     # Every swept axis (OFAT or grid) must have a corresponding baseline
