@@ -4,7 +4,7 @@ hoqi-bench's TOML experiment configs.
 
 Why this exists: docs/experimental_design.md proposes a sweep structure
 (one-factor-at-a-time axes plus one 2D interaction grid) that produces a
-specific, checkable total_runs count (10,290 for the proposed main
+specific, checkable total_runs count (117,950 for the approved, expanded main
 campaign). Without a config schema that computes this number automatically,
 "is this sweep combinatorially reasonable" is a hand-calculation someone has
 to redo every time the config changes -- exactly the kind of thing Day 5's

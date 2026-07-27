@@ -42,11 +42,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from hoqi_bench._types import FloatArray
+from hoqi_bench._types import AnyFloatArray
 
 
 def fit_power_law_exponent(
-    magnitudes: FloatArray, errors: FloatArray
+    magnitudes: AnyFloatArray, errors: AnyFloatArray
 ) -> tuple[float, float, float]:
     """Fits `error = coefficient * magnitude^exponent` via log-log linear
     regression. Returns (exponent, coefficient, r_squared).

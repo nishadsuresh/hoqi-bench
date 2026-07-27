@@ -22,11 +22,14 @@ from __future__ import annotations
 
 import numpy as np
 
+from hoqi_bench._types import AnyFloatArray, FloatArray
 from hoqi_bench.forward_model import HENE_WAVELENGTH_M, simulate_ideal_interferometer
 from hoqi_bench.transforms import amplitude_imbalance, dc_offset, quadrature_phase_error
 
 
-def _make_ideal_iq(mean_intensity: float, contrast: float, n_points: int = 20_000):
+def _make_ideal_iq(
+    mean_intensity: float, contrast: float, n_points: int = 20_000
+) -> tuple[FloatArray, FloatArray]:
     """Ramp covering exactly 1000 full 2*pi phase cycles -- see
     tests/test_transforms.py's docstring for why an exact integer cycle
     count matters for a clean covariance estimate (a fractional leftover
@@ -36,16 +39,16 @@ def _make_ideal_iq(mean_intensity: float, contrast: float, n_points: int = 20_00
     velocity_m_per_s = n_full_cycles * HENE_WAVELENGTH_M / 2 / duration_s
     t = np.linspace(0, duration_s, n_points, endpoint=False)
 
-    def displacement_fn(t: np.ndarray) -> np.ndarray:
+    def displacement_fn(t: AnyFloatArray) -> AnyFloatArray:
         return velocity_m_per_s * t
 
     intensity_i, intensity_q, _ = simulate_ideal_interferometer(
-        t, displacement_fn, mean_intensity=mean_intensity, contrast=contrast, seed=0
+        t, displacement_fn, mean_intensity=mean_intensity, contrast=contrast
     )
     return intensity_i, intensity_q
 
 
-def _predicted_covariance(amplitude: float, amplitude_ratio: float, eps: float) -> np.ndarray:
+def _predicted_covariance(amplitude: float, amplitude_ratio: float, eps: float) -> FloatArray:
     """Closed-form covariance matrix for x=A*cos(t), y=g*A*sin(t+eps),
     derived via sympy integration over a full period before this test was
     written (docs/journal/day10.md): Cov = (A^2/2)*[[1, g*sin(eps)],

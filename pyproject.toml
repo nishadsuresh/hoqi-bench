@@ -49,4 +49,11 @@ select = ["E", "F", "I", "UP", "B"]
 python_version = "3.10"
 strict = true
 mypy_path = "src"
-files = ["src/hoqi_bench"]
+files = ["src/hoqi_bench", "tests", "scripts"]
+
+[[tool.mypy.overrides]]
+# scipy/sympy ship no py.typed marker / published stubs (as of the versions
+# pinned above) -- these are missing-stub warnings, not real type errors, so
+# silencing them here is scoped to exactly that, not a blanket ignore.
+module = ["scipy.*", "sympy.*"]
+ignore_missing_imports = true

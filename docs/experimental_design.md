@@ -146,8 +146,8 @@ so no grid-resolution reduction (Day 26's fallback, if runtime exceeds ~12 hours
 
 ## 5. Statistical protocol
 
-- **Seeds per condition**: 30 (justified above).
-- **Confidence intervals**: bootstrap CI on the mean (percentile method) across the 30 seeds per
+- **Seeds per condition**: 50 (justified above — raised from an original 30-seed proposal).
+- **Confidence intervals**: bootstrap CI on the mean (percentile method) across the 50 seeds per
   condition — chosen over a normal-approximation CI since failure-inflated distributions (some seeds
   fail outright, per Day 3) are not obviously normal, and bootstrap doesn't assume a distributional
   shape.

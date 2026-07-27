@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from hoqi_bench._types import AnyFloatArray, FloatArray
 from hoqi_bench.forward_model import simulate_ideal_interferometer
 from hoqi_bench.pipeline import apply_pipeline
 
@@ -17,11 +18,11 @@ from hoqi_bench.pipeline import apply_pipeline
 def test_empty_pipeline_is_bit_identical_to_ideal_model() -> None:
     t = np.linspace(0, 1.0, 2000)
 
-    def displacement_fn(t: np.ndarray) -> np.ndarray:
-        return 150e-9 * np.sin(2 * np.pi * 4 * t)
+    def displacement_fn(t: AnyFloatArray) -> AnyFloatArray:
+        return np.asarray(150e-9 * np.sin(2 * np.pi * 4 * t))
 
     intensity_i, intensity_q, _ = simulate_ideal_interferometer(
-        t, displacement_fn, contrast=0.9, seed=7
+        t, displacement_fn, contrast=0.9
     )
 
     piped_i, piped_q = apply_pipeline(intensity_i, intensity_q, transforms=())
@@ -54,10 +55,10 @@ def test_transforms_apply_in_the_given_order() -> None:
     order-sensitive stub transforms -- not yet the real Day 9-14 transforms,
     just a check on the composition mechanism itself."""
 
-    def add_one_to_i(i: np.ndarray, q: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def add_one_to_i(i: FloatArray, q: FloatArray) -> tuple[FloatArray, FloatArray]:
         return i + 1.0, q
 
-    def double_i(i: np.ndarray, q: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def double_i(i: FloatArray, q: FloatArray) -> tuple[FloatArray, FloatArray]:
         return i * 2.0, q
 
     i0 = np.array([1.0, 2.0, 3.0])

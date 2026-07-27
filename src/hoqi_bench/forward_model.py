@@ -33,76 +33,61 @@ from __future__ import annotations
 from collections.abc import Callable
 
 import numpy as np
-from numpy.typing import NDArray
+
+from hoqi_bench._types import AnyFloatArray, FloatArray
 
 HENE_WAVELENGTH_M: float = 632.8e-9  # HeNe laser, meters
 
 
 def simulate_ideal_interferometer(
-    t: NDArray[np.float64],
-    displacement_fn: Callable[[NDArray[np.float64]], NDArray[np.float64]],
+    t: AnyFloatArray,
+    displacement_fn: Callable[[AnyFloatArray], AnyFloatArray],
     wavelength_m: float = HENE_WAVELENGTH_M,
     mean_intensity: float = 1.0,
     contrast: float = 0.9,
-    shot_noise_std: float = 0.0,
-    thermal_noise_std: float = 0.0,
-    mains_amplitude: float = 0.0,
-    mains_freq_hz: float = 60.0,
-    drift_amplitude: float = 0.0,
-    drift_freq_hz: float = 0.1,
-    seed: int | None = None,
-) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
+) -> tuple[FloatArray, FloatArray, FloatArray]:
     """
     Generate quadrature (I, Q) detector signals for a given displacement
-    waveform, with optional realistic noise sources -- but no ellipse
-    distortion (amplitude imbalance, quadrature phase error, DC offset). This
-    is the ideal baseline; Week 2's transforms (Days 9-14) inject distortion
-    on top of this function's output, not inside it.
+    waveform. This is the ideal, distortion-free baseline: no amplitude
+    imbalance, quadrature phase error, DC offset, or detector noise --
+    Week 2's composable transforms (`transforms.py`, `noise.py`) inject every
+    non-ideality on top of this function's output, not inside it.
+
+    Audit note (Weeks 1-2 audit, 2026-07-26, finding F11): this function
+    used to also accept `shot_noise_std`/`thermal_noise_std`/`mains_amplitude`/
+    `drift_amplitude` parameters and inject noise directly. They were never
+    referenced by any config, test, or the documented pipeline order in
+    `pipeline.py` -- a second, undocumented noise path duplicating `noise.py`,
+    with a misleadingly-named `shot_noise_std` that was actually
+    intensity-independent Gaussian noise, not physical shot noise. Removed
+    rather than fixed in place: `noise.py`'s `gaussian_noise`/`poisson_noise`
+    are the single, composable, tested noise path per `pipeline.py`'s
+    documented architecture, and a caller wanting noise on this signal should
+    go through `pipeline.apply_pipeline`, not through this function.
 
     Parameters
     ----------
-    t : time array (seconds)
+    t : time array (seconds) -- any float precision (matches what
+        `np.linspace`/`np.arange` actually return); this function's output is
+        always float64 regardless, since every downstream consumer
+        (`transforms.py`, `noise.py`, `pipeline.py`) declares that as its
+        contract, not something a caller's input precision should affect.
     displacement_fn : callable, x(t) in meters -- the "true" mirror displacement
-    shot_noise_std : shot-like noise (modeled as intensity-independent additive
-        Gaussian here for simplicity -- true shot noise scales with sqrt(signal);
-        see Day 12's Poisson shot-noise transform for the physically correct model)
-    thermal_noise_std : detector thermal (Gaussian) noise
-    mains_amplitude, mains_freq_hz : 60Hz electrical pickup
-    drift_amplitude, drift_freq_hz : slow low-frequency drift (thermal/mechanical)
 
     Returns
     -------
     (I, Q, x_true) -- the two detector signals and the ground-truth displacement
-    (returned for validation; a real system would not have x_true).
+    (returned for validation, and consumed directly by `transforms.hysteresis`
+    for its direction-of-travel ground truth -- see that function's docstring
+    for why deriving direction from the noisy measured signal is a category
+    error, not a robustness question).
     """
     # ---- 1. Ground-truth displacement and phase ----
-    rng = np.random.default_rng(seed)
-
-    x_true = displacement_fn(t)
+    x_true = np.asarray(displacement_fn(t), dtype=np.float64)
     phi = 4 * np.pi * x_true / wavelength_m
 
     # ---- 2. Ideal quadrature intensities ----
     intensity_i = mean_intensity * (1 + contrast * np.cos(phi))
     intensity_q = mean_intensity * (1 + contrast * np.sin(phi))
-
-    # ---- 3. Environmental disturbances (shared by both channels) ----
-    mains = mains_amplitude * np.sin(2 * np.pi * mains_freq_hz * t)
-    drift = drift_amplitude * np.sin(2 * np.pi * drift_freq_hz * t)
-
-    # ---- 4. Assemble final signals: ideal + disturbances + detector noise ----
-    intensity_i = (
-        intensity_i
-        + mains
-        + drift
-        + rng.normal(0, shot_noise_std, size=t.shape)
-        + rng.normal(0, thermal_noise_std, size=t.shape)
-    )
-    intensity_q = (
-        intensity_q
-        + mains
-        + drift
-        + rng.normal(0, shot_noise_std, size=t.shape)
-        + rng.normal(0, thermal_noise_std, size=t.shape)
-    )
 
     return intensity_i, intensity_q, x_true

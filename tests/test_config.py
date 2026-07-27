@@ -18,7 +18,7 @@ from hoqi_bench.config import ConfigError, SweepConfig, load_sweep_config
 # ---- 1. Happy path: the actual proposed main campaign config ----
 
 
-def test_main_campaign_config_loads_and_computes_expected_total_runs():
+def test_main_campaign_config_loads_and_computes_expected_total_runs() -> None:
     """docs/experimental_design.md Section 3 hand-computes total_runs=117950
     for the approved, expanded config -- this test confirms the loader
     agrees with that hand computation, not just that it loads without
@@ -49,7 +49,7 @@ def test_main_campaign_config_loads_and_computes_expected_total_runs():
     assert config.total_runs() == 117_950
 
 
-def test_smoke_config_loads():
+def test_smoke_config_loads() -> None:
     config_path = Path(__file__).resolve().parent.parent / "configs" / "smoke.toml"
     config = load_sweep_config(config_path)
     assert config.total_runs() == 3 * 2 * 5  # 3 conditions x 2 methods x 5 seeds
@@ -58,7 +58,7 @@ def test_smoke_config_loads():
 # ---- 2. total_runs on a hand-constructed config, independent of any file ----
 
 
-def test_total_runs_ofat_only():
+def test_total_runs_ofat_only() -> None:
     config = SweepConfig(
         axes={"a": [1, 2, 3], "b": [1, 2]},
         grids={},
@@ -71,7 +71,7 @@ def test_total_runs_ofat_only():
     assert config.total_runs() == 100
 
 
-def test_total_runs_with_grid():
+def test_total_runs_with_grid() -> None:
     config = SweepConfig(
         axes={},
         grids={"g1": {"a": [1, 2], "b": [1, 2, 3]}},
@@ -87,19 +87,19 @@ def test_total_runs_with_grid():
 # ---- 3. Rejection cases: each must fail with a specific error ----
 
 
-def test_rejects_missing_file(tmp_path):
+def test_rejects_missing_file(tmp_path: Path) -> None:
     with pytest.raises(ConfigError, match="not found"):
         load_sweep_config(tmp_path / "does_not_exist.toml")
 
 
-def test_rejects_malformed_toml(tmp_path):
+def test_rejects_malformed_toml(tmp_path: Path) -> None:
     bad_file = tmp_path / "bad.toml"
     bad_file.write_text("this is not [ valid toml =")
     with pytest.raises(ConfigError, match="malformed TOML"):
         load_sweep_config(bad_file)
 
 
-def test_rejects_missing_required_key(tmp_path):
+def test_rejects_missing_required_key(tmp_path: Path) -> None:
     """'tolerance' omitted entirely -- must fail with a specific missing-key
     error, not an AttributeError/KeyError leaking from inside the loader."""
     config_file = tmp_path / "missing_key.toml"
@@ -117,7 +117,7 @@ x = [1.0, 2.0]
         load_sweep_config(config_file)
 
 
-def test_rejects_empty_axis_list(tmp_path):
+def test_rejects_empty_axis_list(tmp_path: Path) -> None:
     config_file = tmp_path / "empty_axis.toml"
     config_file.write_text("""
 methods = ["kasa"]
@@ -134,7 +134,7 @@ x = []
         load_sweep_config(config_file)
 
 
-def test_rejects_non_numeric_axis_values(tmp_path):
+def test_rejects_non_numeric_axis_values(tmp_path: Path) -> None:
     config_file = tmp_path / "bad_values.toml"
     config_file.write_text("""
 methods = ["kasa"]
@@ -151,7 +151,7 @@ x = ["not", "numbers"]
         load_sweep_config(config_file)
 
 
-def test_rejects_grid_with_fewer_than_two_axes(tmp_path):
+def test_rejects_grid_with_fewer_than_two_axes(tmp_path: Path) -> None:
     config_file = tmp_path / "bad_grid.toml"
     config_file.write_text("""
 methods = ["kasa"]
@@ -171,7 +171,7 @@ x = [1.0, 2.0]
         load_sweep_config(config_file)
 
 
-def test_rejects_empty_methods_list(tmp_path):
+def test_rejects_empty_methods_list(tmp_path: Path) -> None:
     config_file = tmp_path / "no_methods.toml"
     config_file.write_text("""
 methods = []
@@ -188,7 +188,7 @@ x = [1.0]
         load_sweep_config(config_file)
 
 
-def test_rejects_zero_seeds(tmp_path):
+def test_rejects_zero_seeds(tmp_path: Path) -> None:
     config_file = tmp_path / "zero_seeds.toml"
     config_file.write_text("""
 methods = ["kasa"]
@@ -205,7 +205,7 @@ x = [1.0]
         load_sweep_config(config_file)
 
 
-def test_rejects_negative_tolerance(tmp_path):
+def test_rejects_negative_tolerance(tmp_path: Path) -> None:
     config_file = tmp_path / "bad_tolerance.toml"
     config_file.write_text("""
 methods = ["kasa"]
@@ -222,7 +222,7 @@ x = [1.0]
         load_sweep_config(config_file)
 
 
-def test_rejects_missing_baseline_for_other_swept_param(tmp_path):
+def test_rejects_missing_baseline_for_other_swept_param(tmp_path: Path) -> None:
     """Sweeping 'x' requires a baseline value for 'y' (held constant while x
     varies) if 'y' is also a swept parameter -- this is the OFAT design's
     core assumption (docs/experimental_design.md Section 3), and a config

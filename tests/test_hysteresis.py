@@ -11,26 +11,29 @@ from __future__ import annotations
 
 import numpy as np
 
+from hoqi_bench._types import AnyFloatArray, FloatArray
 from hoqi_bench.forward_model import simulate_ideal_interferometer
 from hoqi_bench.transforms import hysteresis
 
 
-def _up_and_down_iq(mean_intensity: float, contrast: float, n_points: int = 5000):
+def _up_and_down_iq(
+    mean_intensity: float, contrast: float, n_points: int = 5000
+) -> tuple[FloatArray, FloatArray]:
     """A displacement that sweeps phase up then back down (two full
     oscillation cycles) -- the minimal case needed to have a genuine
     'direction of travel' to be direction-dependent about."""
     t = np.linspace(0, 1.0, n_points)
 
-    def displacement_fn(t: np.ndarray) -> np.ndarray:
-        return 2e-6 * np.sin(2 * np.pi * 2 * t)
+    def displacement_fn(t: AnyFloatArray) -> AnyFloatArray:
+        return np.asarray(2e-6 * np.sin(2 * np.pi * 2 * t))
 
     intensity_i, intensity_q, _ = simulate_ideal_interferometer(
-        t, displacement_fn, mean_intensity=mean_intensity, contrast=contrast, seed=0
+        t, displacement_fn, mean_intensity=mean_intensity, contrast=contrast
     )
     return intensity_i, intensity_q
 
 
-def _shoelace_area(x: np.ndarray, y: np.ndarray) -> float:
+def _shoelace_area(x: FloatArray, y: FloatArray) -> float:
     """Standard polygon-area formula, applied to the closed (I,Q) path --
     a perfectly retraced path (up then down over the SAME points) has zero
     signed area by construction; any real enclosed loop has nonzero area."""

@@ -35,6 +35,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.linalg
 
+from hoqi_bench._types import FloatArray
+
 # ---- 1. Synthetic ellipse point generator ----
 
 
@@ -51,7 +53,7 @@ class TrueEllipse:
     def sample(
         self, n_points: int, arc_start_rad: float, arc_end_rad: float,
         noise_std: float, seed: int,
-    ) -> tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[FloatArray, FloatArray]:
         """Generate n_points on this ellipse over the given angular arc, with
         additive Gaussian noise on the resulting (x, y) coordinates."""
         rng = np.random.default_rng(seed)
@@ -66,7 +68,7 @@ class TrueEllipse:
         return x, y
 
 
-def true_conic_coefficients(ellipse: TrueEllipse) -> np.ndarray:
+def true_conic_coefficients(ellipse: TrueEllipse) -> FloatArray:
     """Converts geometric ellipse parameters to the [a,b,c,d,e,f] conic form
     (Halir & Flusser eq. 1), by rotating/translating the axis-aligned conic
     (x/semi_major)^2 + (y/semi_minor)^2 = 1."""
@@ -87,7 +89,7 @@ def true_conic_coefficients(ellipse: TrueEllipse) -> np.ndarray:
 # original formulation as background) -- see notes/halir_flusser_1998.md.
 
 
-def fit_ellipse_fitzgibbon(x: np.ndarray, y: np.ndarray) -> tuple[np.ndarray | None, str]:
+def fit_ellipse_fitzgibbon(x: FloatArray, y: FloatArray) -> tuple[FloatArray | None, str]:
     """Fitzgibbon et al.'s direct ellipse-specific least-squares fit: one 6x6
     generalized eigenvalue problem S*a = lambda*C*a (eq. 10), with the
     ellipse-specific solution among the 6 candidate eigenvectors selected by
@@ -137,7 +139,7 @@ def fit_ellipse_fitzgibbon(x: np.ndarray, y: np.ndarray) -> tuple[np.ndarray | N
 # ---- 3. Halir & Flusser (1998) numerically stable reformulation ----
 
 
-def fit_ellipse_halir_flusser(x: np.ndarray, y: np.ndarray) -> tuple[np.ndarray | None, str]:
+def fit_ellipse_halir_flusser(x: FloatArray, y: FloatArray) -> tuple[FloatArray | None, str]:
     """Halir & Flusser's numerically stable direct least-squares ellipse fit.
 
     Design decision: splits a=[a1;a2] into quadratic part a1=[a,b,c] and
@@ -185,13 +187,14 @@ def fit_ellipse_halir_flusser(x: np.ndarray, y: np.ndarray) -> tuple[np.ndarray 
 # ---- 4. Comparison metric ----
 
 
-def normalized_coefficient_error(fitted: np.ndarray, true_coeffs: np.ndarray) -> float:
+def normalized_coefficient_error(fitted: FloatArray, true_coeffs: FloatArray) -> float:
     """Conic coefficients are defined only up to an arbitrary nonzero scale,
     so compare after normalizing both to unit L2 norm and aligning sign via
     the largest-magnitude component."""
-    def normalize(v: np.ndarray) -> np.ndarray:
+    def normalize(v: FloatArray) -> FloatArray:
         v = v / np.linalg.norm(v)
-        return v * np.sign(v[np.argmax(np.abs(v))])
+        sign: float = np.sign(v[np.argmax(np.abs(v))])
+        return np.asarray(v * sign, dtype=np.float64)
 
     return float(np.linalg.norm(normalize(fitted) - normalize(true_coeffs)))
 
@@ -203,7 +206,36 @@ def normalized_coefficient_error(fitted: np.ndarray, true_coeffs: np.ndarray) ->
 # extreme arc, purely a fluke of that one noise draw.)
 
 
-def build_conditioning_spectrum() -> dict[str, dict]:
+@dataclass
+class ConditionSpec:
+    """One point in the conditioning spectrum: a ground-truth ellipse, the
+    sampling arc/density/noise used to generate synthetic data from it."""
+
+    ellipse: TrueEllipse
+    n_points: int
+    arc_start_rad: float
+    arc_end_rad: float
+    noise_std: float
+
+
+@dataclass
+class RegimeResult:
+    """Per-regime comparison summary: failure rate and recovery error for
+    both methods, plus the design matrix's mean condition number (the
+    quantity that actually predicts where each method breaks)."""
+
+    regime: str
+    mean_cond_d: float
+    fitzgibbon_fail_rate: float
+    fitzgibbon_mean_error: float
+    fitzgibbon_std_error: float
+    halir_flusser_fail_rate: float
+    halir_flusser_mean_error: float
+    halir_flusser_std_error: float
+    n_seeds: int
+
+
+def build_conditioning_spectrum() -> dict[str, ConditionSpec]:
     base = TrueEllipse(
         center_x=2.0, center_y=-1.0, semi_major=5.0, semi_minor=4.0, rotation_rad=0.3
     )
@@ -214,29 +246,28 @@ def build_conditioning_spectrum() -> dict[str, dict]:
         center_x=2.0, center_y=-1.0, semi_major=8.0, semi_minor=0.05, rotation_rad=0.3
     )
     return {
-        "well_conditioned": dict(ellipse=base, n_points=60, arc=(0, 2 * np.pi), noise_std=0.02),
-        "high_eccentricity": dict(ellipse=thin, n_points=60, arc=(0, 2 * np.pi), noise_std=0.02),
-        "partial_arc_30deg": dict(ellipse=base, n_points=60, arc=(0, np.pi / 6), noise_std=0.02),
-        "tight_clustering_3deg": dict(ellipse=base, n_points=60, arc=(0.7, 0.75), noise_std=0.02),
-        "near_degenerate_15deg": dict(
-            ellipse=very_thin, n_points=60, arc=(0, np.deg2rad(15)), noise_std=0.001
-        ),
+        "well_conditioned": ConditionSpec(base, 60, 0, 2 * np.pi, 0.02),
+        "high_eccentricity": ConditionSpec(thin, 60, 0, 2 * np.pi, 0.02),
+        "partial_arc_30deg": ConditionSpec(base, 60, 0, np.pi / 6, 0.02),
+        "tight_clustering_3deg": ConditionSpec(base, 60, 0.7, 0.75, 0.02),
+        "near_degenerate_15deg": ConditionSpec(very_thin, 60, 0, np.deg2rad(15), 0.001),
     }
 
 
-def run_study(n_seeds: int = 30) -> list[dict]:
+def run_study(n_seeds: int = 30) -> list[RegimeResult]:
     spectrum = build_conditioning_spectrum()
     results = []
     for regime_name, cfg in spectrum.items():
-        ellipse: TrueEllipse = cfg["ellipse"]
-        true_coeffs = true_conic_coefficients(ellipse)
+        true_coeffs = true_conic_coefficients(cfg.ellipse)
 
         fb_errors, hf_errors = [], []
         fb_fail_count, hf_fail_count = 0, 0
         cond_numbers = []
 
         for seed in range(n_seeds):
-            x, y = ellipse.sample(cfg["n_points"], *cfg["arc"], cfg["noise_std"], seed=seed)
+            x, y = cfg.ellipse.sample(
+                cfg.n_points, cfg.arc_start_rad, cfg.arc_end_rad, cfg.noise_std, seed=seed
+            )
             design_full = np.column_stack([x**2, x * y, y**2, x, y, np.ones_like(x)])
             cond_numbers.append(np.linalg.cond(design_full))
 
@@ -253,9 +284,9 @@ def run_study(n_seeds: int = 30) -> list[dict]:
             else:
                 hf_errors.append(normalized_coefficient_error(hf_coeffs, true_coeffs))
 
-        results.append(dict(
+        results.append(RegimeResult(
             regime=regime_name,
-            mean_cond_D=float(np.mean(cond_numbers)),
+            mean_cond_d=float(np.mean(cond_numbers)),
             fitzgibbon_fail_rate=fb_fail_count / n_seeds,
             fitzgibbon_mean_error=float(np.mean(fb_errors)) if fb_errors else float("nan"),
             fitzgibbon_std_error=float(np.std(fb_errors)) if fb_errors else float("nan"),
@@ -267,18 +298,18 @@ def run_study(n_seeds: int = 30) -> list[dict]:
     return results
 
 
-def print_report(results: list[dict]) -> None:
+def print_report(results: list[RegimeResult]) -> None:
     print(
         f"{'regime':<24}{'cond(D)':>10}{'FB fail%':>10}{'FB err':>16}"
         f"{'H&F fail%':>11}{'H&F err':>16}"
     )
     for r in results:
-        fb_err = f"{r['fitzgibbon_mean_error']:.4f}+-{r['fitzgibbon_std_error']:.4f}"
-        hf_err = f"{r['halir_flusser_mean_error']:.4f}+-{r['halir_flusser_std_error']:.4f}"
+        fb_err = f"{r.fitzgibbon_mean_error:.4f}+-{r.fitzgibbon_std_error:.4f}"
+        hf_err = f"{r.halir_flusser_mean_error:.4f}+-{r.halir_flusser_std_error:.4f}"
         print(
-            f"{r['regime']:<24}{r['mean_cond_D']:>10.1e}"
-            f"{r['fitzgibbon_fail_rate']*100:>9.0f}%{fb_err:>16}"
-            f"{r['halir_flusser_fail_rate']*100:>10.0f}%{hf_err:>16}"
+            f"{r.regime:<24}{r.mean_cond_d:>10.1e}"
+            f"{r.fitzgibbon_fail_rate*100:>9.0f}%{fb_err:>16}"
+            f"{r.halir_flusser_fail_rate*100:>10.0f}%{hf_err:>16}"
         )
 
 
@@ -309,18 +340,18 @@ def demonstrate_clean_divergence() -> None:
     print(f"Halir & Flusser (stable): {hf_status}{hf_error_suffix}")
 
 
-def make_plot(results: list[dict], output_path: str) -> None:
+def make_plot(results: list[RegimeResult], output_path: str) -> None:
     """Grouped bar plot: mean coefficient recovery error (with std error bars)
     per regime, Fitzgibbon vs Halir & Flusser, annotated with failure rates
     since a silent NaN gap would hide the more important failure-rate finding."""
-    regimes = [r["regime"] for r in results]
+    regimes = [r.regime for r in results]
     x_pos = np.arange(len(regimes))
     width = 0.35
 
-    fb_means = [r["fitzgibbon_mean_error"] for r in results]
-    fb_stds = [r["fitzgibbon_std_error"] for r in results]
-    hf_means = [r["halir_flusser_mean_error"] for r in results]
-    hf_stds = [r["halir_flusser_std_error"] for r in results]
+    fb_means = [r.fitzgibbon_mean_error for r in results]
+    fb_stds = [r.fitzgibbon_std_error for r in results]
+    hf_means = [r.halir_flusser_mean_error for r in results]
+    hf_stds = [r.halir_flusser_std_error for r in results]
 
     fig, ax = plt.subplots(figsize=(11, 6))
     ax.bar(
@@ -336,15 +367,15 @@ def make_plot(results: list[dict], output_path: str) -> None:
 
     for i, r in enumerate(results):
         ax.annotate(
-            f"fail: {r['fitzgibbon_fail_rate']*100:.0f}%", (x_pos[i] - width / 2, 0.02),
+            f"fail: {r.fitzgibbon_fail_rate*100:.0f}%", (x_pos[i] - width / 2, 0.02),
             ha="center", fontsize=8, color="#d62728",
         )
         ax.annotate(
-            f"fail: {r['halir_flusser_fail_rate']*100:.0f}%", (x_pos[i] + width / 2, 0.02),
+            f"fail: {r.halir_flusser_fail_rate*100:.0f}%", (x_pos[i] + width / 2, 0.02),
             ha="center", fontsize=8, color="#2ca02c",
         )
 
-    n_seeds = results[0]["n_seeds"]
+    n_seeds = results[0].n_seeds
     ax.set_ylabel(f"Mean normalized conic-coefficient error (n={n_seeds} seeds/regime)")
     ax.set_title(
         "Ellipse-fitting recovery error and failure rate across a conditioning spectrum\n"

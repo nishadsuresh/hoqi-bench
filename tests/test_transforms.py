@@ -17,12 +17,13 @@ from __future__ import annotations
 
 import numpy as np
 
+from hoqi_bench._types import AnyFloatArray, FloatArray
 from hoqi_bench.forward_model import simulate_ideal_interferometer
 from hoqi_bench.transforms import amplitude_imbalance, quadrature_phase_error
 
 
 def _ellipse_semi_axes_and_angle(
-    i_ac: np.ndarray, q_ac: np.ndarray
+    i_ac: FloatArray, q_ac: FloatArray
 ) -> tuple[float, float, float]:
     """Recovers (semi_axis_1, semi_axis_2, angle_of_semi_axis_1_rad) from a
     point cloud via the covariance-matrix/PCA method described above.
@@ -34,7 +35,9 @@ def _ellipse_semi_axes_and_angle(
     return float(semi_axes[0]), float(semi_axes[1]), float(angle)
 
 
-def _make_ideal_iq(mean_intensity: float, contrast: float, n_points: int = 20_000):
+def _make_ideal_iq(
+    mean_intensity: float, contrast: float, n_points: int = 20_000
+) -> tuple[FloatArray, FloatArray]:
     """Dense, full-period ideal (I,Q) via a ramp covering EXACTLY 1000 full
     2*pi phase cycles -- deliberately an exact integer, not an arbitrary
     round-number velocity. A first version of this helper used an
@@ -52,11 +55,11 @@ def _make_ideal_iq(mean_intensity: float, contrast: float, n_points: int = 20_00
     velocity_m_per_s = n_full_cycles * wavelength_m / 2 / duration_s
     t = np.linspace(0, duration_s, n_points, endpoint=False)
 
-    def displacement_fn(t: np.ndarray) -> np.ndarray:
+    def displacement_fn(t: AnyFloatArray) -> AnyFloatArray:
         return velocity_m_per_s * t
 
     intensity_i, intensity_q, _ = simulate_ideal_interferometer(
-        t, displacement_fn, mean_intensity=mean_intensity, contrast=contrast, seed=0
+        t, displacement_fn, mean_intensity=mean_intensity, contrast=contrast
     )
     return intensity_i, intensity_q
 
