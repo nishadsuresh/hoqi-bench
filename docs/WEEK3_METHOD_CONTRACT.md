@@ -122,7 +122,22 @@ measurably reduce bias relative to Kasa) -- the qualitative ordering the
 classic literature reports, reproduced here as a falsifiable check rather
 than assumed.
 
-## What counts as deviating from this contract
+**Deviation, 2026-07-27 (Day 20), falsified and narrowed, not silently
+dropped**: the italicized prediction above -- "Taubin's correction should
+measurably reduce bias relative to Kasa" -- is TRUE for RADIUS estimation
+(the classic literature's own claim) but FALSE for phase-recovery RMSE
+specifically. Verified directly, with matched estimators, 200 seeds, at
+`axis:noise_std=0.1` (the top of the swept range, where any bias effect
+should be largest): Taubin's radius bias is `-0.0095` vs. Kasa's `+0.0535`
+-- Taubin's radius bias genuinely is ~5.6x smaller, confirming the
+textbook effect and confirming the Taubin implementation itself is
+correct. But `atan2`-based phase recovery depends ONLY on the fitted
+CENTER, never the radius -- and center bias shows no such improvement
+(`-0.0024` for Taubin vs. `+0.0003` for Kasa; Taubin's center bias is, if
+anything, larger here). Day 21's gate is narrowed accordingly: checks
+Taubin's RADIUS-estimation advantage directly (the effect that is
+actually real and measurable), not a phase-RMSE-ordering claim the
+classic literature's own result was never about in the first place.
 
 Any change to the wrapping rule, the failure-contract fields, or the Day 21
 gate criteria after this point must be recorded as an explicit, dated
