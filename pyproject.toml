@@ -49,7 +49,7 @@ select = ["E", "F", "I", "UP", "B"]
 python_version = "3.10"
 strict = true
 mypy_path = "src"
-files = ["src/hoqi_bench", "tests", "scripts"]
+files = ["src/hoqi_bench", "tests", "scripts", "conftest.py"]
 
 [[tool.mypy.overrides]]
 # scipy/sympy ship no py.typed marker / published stubs (as of the versions
