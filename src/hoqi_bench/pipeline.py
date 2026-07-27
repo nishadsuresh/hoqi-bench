@@ -53,13 +53,27 @@ what every caller in this codebase actually constructs, and what
 4. `noise.gaussian_noise` OR `noise.poisson_noise` -- mutually exclusive in
    practice (RQ4 compares them, doesn't combine them); noise is per-sample and
    independent, so its position relative to 1-3 doesn't change the result
-5. `hysteresis` -- must be last: it needs the FINAL phase trajectory (after
-   every other distortion) to determine local direction of travel correctly
+5. `hysteresis` -- must be last (it perturbs whatever radius the signal has
+   accumulated by that point), but its DIRECTION-OF-TRAVEL input is bound at
+   construction time from `forward_model`'s `x_true` output, not read from
+   the pipeline's running (I, Q) -- see below and `transforms.hysteresis`'s
+   docstring (Weeks 1-2 audit, 2026-07-26, finding F1: direction was
+   originally read from the pipeline's own signal at that point, which
+   degrades to a near-coin-flip once noise has been applied upstream --
+   57% agreement with ground truth at the campaign's own noise=0.05).
+
+`hysteresis` is consequently the one transform in this list that is NOT
+purely a function of the (I, Q) flowing through `apply_pipeline` -- it also
+closes over `x_true` from step 0 (`forward_model.simulate_ideal_interferometer`'s
+third return value), bound via `functools.partial` at pipeline-construction
+time like every other parameter, so it still satisfies the `Transform`
+signature below; `apply_pipeline` itself remains distortion-agnostic and
+does not need to know this.
 
 Pipeline position: `forward_model.simulate_ideal_interferometer` produces
-the ideal (I, Q); `apply_pipeline` is called on its output, with a
-caller-supplied list of transforms in the order above, before any analysis
-method (Days 15-20) sees the signal.
+the ideal (I, Q, x_true); `apply_pipeline` is called on the (I, Q) pair,
+with a caller-supplied list of transforms in the order above, before any
+analysis method (Days 15-20) sees the signal.
 """
 
 from __future__ import annotations

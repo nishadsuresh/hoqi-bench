@@ -5,6 +5,15 @@ directly -- a phase sweep up and back down does NOT retrace the same
 magnitude (confirmed empirically, via a direct numerical check outside
 pytest, to be exactly LINEAR before writing the linearity assertion below
 -- see docs/journal/day14.md).
+
+Weeks 1-2 audit (2026-07-26, finding F1): `hysteresis` now takes
+`true_displacement` (the generator's ground-truth `x_true`) as an explicit
+parameter for direction-of-travel, rather than deriving direction from the
+noisy `intensity_i`/`intensity_q` it also perturbs -- see
+`transforms.hysteresis`'s docstring for why. `_up_and_down_iq` below returns
+`x_true` alongside (I, Q) so every test can pass it through, and
+`test_direction_survives_noise_that_would_have_corrupted_it` demonstrates
+the actual property this fixes.
 """
 
 from __future__ import annotations
@@ -13,24 +22,28 @@ import numpy as np
 
 from hoqi_bench._types import AnyFloatArray, FloatArray
 from hoqi_bench.forward_model import simulate_ideal_interferometer
+from hoqi_bench.noise import gaussian_noise
 from hoqi_bench.transforms import hysteresis
 
 
 def _up_and_down_iq(
     mean_intensity: float, contrast: float, n_points: int = 5000
-) -> tuple[FloatArray, FloatArray]:
+) -> tuple[FloatArray, FloatArray, FloatArray]:
     """A displacement that sweeps phase up then back down (two full
     oscillation cycles) -- the minimal case needed to have a genuine
-    'direction of travel' to be direction-dependent about."""
+    'direction of travel' to be direction-dependent about. Returns
+    (I, Q, x_true) -- callers needing hysteresis's `true_displacement`
+    parameter use the third element directly, matching how a real caller
+    gets it from `forward_model.simulate_ideal_interferometer`."""
     t = np.linspace(0, 1.0, n_points)
 
     def displacement_fn(t: AnyFloatArray) -> AnyFloatArray:
         return np.asarray(2e-6 * np.sin(2 * np.pi * 2 * t))
 
-    intensity_i, intensity_q, _ = simulate_ideal_interferometer(
+    intensity_i, intensity_q, x_true = simulate_ideal_interferometer(
         t, displacement_fn, mean_intensity=mean_intensity, contrast=contrast
     )
-    return intensity_i, intensity_q
+    return intensity_i, intensity_q, x_true
 
 
 def _shoelace_area(x: FloatArray, y: FloatArray) -> float:
@@ -42,8 +55,11 @@ def _shoelace_area(x: FloatArray, y: FloatArray) -> float:
 
 def test_identity_at_zero_hysteresis() -> None:
     mean_intensity, contrast = 1.0, 0.9
-    intensity_i, intensity_q = _up_and_down_iq(mean_intensity, contrast)
-    new_i, new_q = hysteresis(intensity_i, intensity_q, mean_intensity, hysteresis_magnitude=0.0)
+    intensity_i, intensity_q, x_true = _up_and_down_iq(mean_intensity, contrast)
+    new_i, new_q = hysteresis(
+        intensity_i, intensity_q, mean_intensity,
+        hysteresis_magnitude=0.0, true_displacement=x_true,
+    )
     assert np.array_equal(new_i, intensity_i)
     assert np.array_equal(new_q, intensity_q)
 
@@ -53,15 +69,18 @@ def test_zero_hysteresis_gives_zero_loop_area() -> None:
     hysteresis, the up-and-down path retraces itself exactly, so the
     enclosed area must be exactly (or essentially) zero."""
     mean_intensity, contrast = 1.0, 0.9
-    intensity_i, intensity_q = _up_and_down_iq(mean_intensity, contrast)
+    intensity_i, intensity_q, _ = _up_and_down_iq(mean_intensity, contrast)
     area = _shoelace_area(intensity_i - mean_intensity, intensity_q - mean_intensity)
     assert area < 1e-6
 
 
 def test_nonzero_hysteresis_produces_a_real_loop_area() -> None:
     mean_intensity, contrast = 1.0, 0.9
-    intensity_i, intensity_q = _up_and_down_iq(mean_intensity, contrast)
-    new_i, new_q = hysteresis(intensity_i, intensity_q, mean_intensity, hysteresis_magnitude=0.05)
+    intensity_i, intensity_q, x_true = _up_and_down_iq(mean_intensity, contrast)
+    new_i, new_q = hysteresis(
+        intensity_i, intensity_q, mean_intensity,
+        hysteresis_magnitude=0.05, true_displacement=x_true,
+    )
     area = _shoelace_area(new_i - mean_intensity, new_q - mean_intensity)
     assert area > 1.0  # a real, substantial enclosed area, not numerical noise near zero
 
@@ -73,12 +92,12 @@ def test_loop_area_scales_linearly_with_hysteresis_magnitude() -> None:
     model -- i.e. area scales exactly LINEARLY with magnitude, not just
     monotonically. Checked here across 5 magnitudes, not just two points."""
     mean_intensity, contrast = 1.0, 0.9
-    intensity_i, intensity_q = _up_and_down_iq(mean_intensity, contrast)
+    intensity_i, intensity_q, x_true = _up_and_down_iq(mean_intensity, contrast)
 
     magnitudes = [0.01, 0.02, 0.04, 0.08, 0.16]
     areas = []
     for h in magnitudes:
-        new_i, new_q = hysteresis(intensity_i, intensity_q, mean_intensity, h)
+        new_i, new_q = hysteresis(intensity_i, intensity_q, mean_intensity, h, x_true)
         areas.append(_shoelace_area(new_i - mean_intensity, new_q - mean_intensity))
 
     ratios = [area / h for area, h in zip(areas, magnitudes, strict=True)]
@@ -92,13 +111,15 @@ def test_up_pass_and_down_pass_visit_different_iq_points_at_the_same_phase() -> 
     reached once on the way up and once on the way down, the (I,Q) point
     must be measurably different when hysteresis is active."""
     mean_intensity, contrast = 1.0, 0.9
-    intensity_i, intensity_q = _up_and_down_iq(mean_intensity, contrast)
-    new_i, new_q = hysteresis(intensity_i, intensity_q, mean_intensity, hysteresis_magnitude=0.05)
+    intensity_i, intensity_q, x_true = _up_and_down_iq(mean_intensity, contrast)
+    new_i, new_q = hysteresis(
+        intensity_i, intensity_q, mean_intensity,
+        hysteresis_magnitude=0.05, true_displacement=x_true,
+    )
 
     i_ac = new_i - mean_intensity
     q_ac = new_q - mean_intensity
-    phase = np.unwrap(np.arctan2(q_ac, i_ac))
-    direction = np.sign(np.gradient(phase))
+    direction = np.sign(np.gradient(x_true))
 
     radius = np.sqrt(i_ac**2 + q_ac**2)
     # among samples with nearly the same phase, radius should differ
@@ -107,3 +128,37 @@ def test_up_pass_and_down_pass_visit_different_iq_points_at_the_same_phase() -> 
     up_radius_mean = np.mean(radius[direction > 0])
     down_radius_mean = np.mean(radius[direction < 0])
     assert abs((up_radius_mean - down_radius_mean) - 2 * 0.05) < 0.01
+
+
+def test_direction_survives_noise_that_would_have_corrupted_it() -> None:
+    """The property the Weeks 1-2 audit's finding F1 exists to fix: with the
+    OLD implementation (direction derived from the noisy measured signal),
+    direction-of-travel agreement with the clean signal degraded to ~57% at
+    noise_std=0.05 (chance = 50%) -- see docs/WEEK1-2_AUDIT.md, Probe 2. With
+    direction now derived from `true_displacement` (never touched by noise),
+    the loop-area effect must survive noise fully intact: applying Gaussian
+    noise BEFORE hysteresis (the documented pipeline order) must not degrade
+    the measured loop area at all, since direction no longer depends on the
+    noisy signal."""
+    mean_intensity, contrast = 1.0, 0.9
+    intensity_i, intensity_q, x_true = _up_and_down_iq(mean_intensity, contrast)
+
+    clean_i, clean_q = hysteresis(
+        intensity_i, intensity_q, mean_intensity,
+        hysteresis_magnitude=0.05, true_displacement=x_true,
+    )
+    clean_area = _shoelace_area(clean_i - mean_intensity, clean_q - mean_intensity)
+
+    noisy_i, noisy_q = gaussian_noise(intensity_i, intensity_q, noise_std=0.05, seed=0)
+    noisy_then_hyst_i, noisy_then_hyst_q = hysteresis(
+        noisy_i, noisy_q, mean_intensity,
+        hysteresis_magnitude=0.05, true_displacement=x_true,
+    )
+    noisy_area = _shoelace_area(
+        noisy_then_hyst_i - mean_intensity, noisy_then_hyst_q - mean_intensity
+    )
+
+    # Areas should be close (noise perturbs radius/angle slightly, but the
+    # DIRECTION driving which way radius is pushed is unaffected) -- not
+    # degraded toward zero the way a noise-derived direction would be.
+    assert abs(noisy_area - clean_area) / clean_area < 0.1

@@ -119,6 +119,7 @@ def hysteresis(
     intensity_q: FloatArray,
     mean_intensity: float,
     hysteresis_magnitude: float,
+    true_displacement: FloatArray,
 ) -> tuple[FloatArray, FloatArray]:
     """Direction-dependent (path-dependent) radial perturbation, per
     Lehmann et al. 2025's finding (`notes/lehmann_2025.md`, Section IV.A)
@@ -132,11 +133,36 @@ def hysteresis(
     i's own (I,Q) value -- a static, memoryless mapping. Hysteresis is
     fundamentally different: "direction of travel" is not a property of a
     single point, it's a property of how phase is CHANGING between
-    neighboring points. This function must look at the whole array's local
-    phase gradient (via np.gradient) to determine, at each sample, whether
-    phase is locally increasing or decreasing -- it carries this
-    neighbor-dependent state through the whole computation, rather than
-    mapping each point independently of its neighbors.
+    neighboring points -- it carries this neighbor-dependent state through
+    the whole computation, rather than mapping each point independently.
+
+    `true_displacement` (Weeks 1-2 audit, 2026-07-26, finding F1): direction
+    of travel is derived from `true_displacement` -- `forward_model`'s own
+    `x_true`, the generator's commanded mirror displacement -- not from the
+    noisy, already-distorted `intensity_i`/`intensity_q` this function also
+    receives. This is a category correction, not a noise-robustness patch:
+    which way the mirror is moving is a property of the mechanism driving
+    it, and the generator already knows it exactly (`x_true` exists in
+    `simulate_ideal_interferometer`'s return value for precisely this
+    reason). Deriving it instead from the measured signal means that at any
+    nonzero noise level, "direction" is partly a noise-driven coin flip
+    rather than the physical effect being modeled -- measured directly (see
+    Weeks 1-2 audit, Probe 2): direction agreement between the two
+    derivations falls to 57% (chance = 50%) at noise_std = 0.05, the
+    campaign's own swept range. Note this is NOT an oracle leak into the
+    methods under test: `true_displacement` is consumed only by this
+    forward-model transform, at signal-generation time, never by any
+    phase-recovery method (Days 15-20), which see only the resulting noisy
+    `intensity_i`/`intensity_q`.
+
+    Using DISPLACEMENT rather than PHASE for direction is a deliberate
+    simplification, not a loss of correctness: phase phi = 4*pi*x/lambda is
+    a strictly positive linear scaling of displacement x (lambda > 0 always),
+    so sign(d(phi)/dt) == sign(d(x)/dt) at every sample -- direction of
+    phase travel and direction of displacement travel are the same thing.
+    Using `true_displacement` directly avoids an unnecessary `np.unwrap`
+    (displacement isn't an angle and never wraps) and avoids re-deriving
+    `wavelength_m` here, which this function has no other reason to need.
 
     Model: radius is perturbed by exactly hysteresis_magnitude in the
     direction of local phase travel (angle preserved, only radius changes)
@@ -164,13 +190,13 @@ def hysteresis(
     if hysteresis_magnitude == 0.0:
         return intensity_i, intensity_q
 
-    # ---- 2. AC-centered coordinates ----
+    # ---- 2. AC-centered coordinates (the signal being perturbed) ----
     i_ac = intensity_i - mean_intensity
     q_ac = intensity_q - mean_intensity
 
-    # ---- 3. Local direction of phase travel (the neighbor-dependent state) ----
-    phase = np.unwrap(np.arctan2(q_ac, i_ac))
-    direction = np.sign(np.gradient(phase))
+    # ---- 3. Local direction of phase travel, from GROUND-TRUTH displacement,
+    # not the noisy/distorted signal being perturbed (see docstring above) ----
+    direction = np.sign(np.gradient(true_displacement))
 
     # ---- 4. Perturb radius by the direction-dependent amount, preserving angle ----
     radius = np.sqrt(i_ac**2 + q_ac**2)
