@@ -18,7 +18,15 @@ which needs every method callable by name in one place).
 
 from __future__ import annotations
 
-from hoqi_bench.methods import fitzgibbon, halir_flusser, heydemann, kasa, raw_atan2, taubin
+from hoqi_bench.methods import (
+    fitzgibbon,
+    halir_flusser,
+    heydemann,
+    kasa,
+    koning_wimmer_witkovsky,
+    raw_atan2,
+    taubin,
+)
 from hoqi_bench.methods.base import FitResult, PhaseRecoveryMethod, failed_result, timed_fit
 
 METHOD_REGISTRY: dict[str, PhaseRecoveryMethod] = {
@@ -28,6 +36,7 @@ METHOD_REGISTRY: dict[str, PhaseRecoveryMethod] = {
     halir_flusser.NAME: halir_flusser.fit,
     fitzgibbon.NAME: fitzgibbon.fit,
     taubin.NAME: taubin.fit,
+    koning_wimmer_witkovsky.NAME: koning_wimmer_witkovsky.fit,
 }
 
 __all__ = [

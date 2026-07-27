@@ -32,6 +32,20 @@ numpy import -- inherited automatically if workers are spawned via
 them set (the standard, portable pattern for this problem; not retrofitted
 here since the runner doesn't exist yet).
 
+**Upgraded from "determinism nicety" to "prevents an actual crash," Day 20's
+runtime probe**: running the full 125,650-run campaign as a standalone
+script (i.e. WITHOUT this file's pin, since a bare `python -c` invocation
+never imports `conftest.py`) crashed partway through with
+`SystemError: attempting to create PyCFunction with class but no
+METH_METHOD flag` -- a low-level numpy/BLAS internal error under sustained
+multi-threaded contention across tens of thousands of rapid
+`np.linalg` calls. Re-running the IDENTICAL script with
+`OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1` set in the
+shell environment completed all 125,650 runs cleanly in 14.32 seconds,
+zero crashes. This is now a CONFIRMED requirement for Day 24's runner, not
+a theoretical one: every worker process must inherit this pin or risks the
+exact crash observed here, not just non-deterministic results.
+
 `MKL_NUM_THREADS` is set for portability even though this venv's numpy is
 linked against OpenBLAS, not MKL -- Week 4's planned multi-OS CI matrix
 (docs/WEEK3-4_PLAN.md Day 26) may hit an MKL-linked numpy build on a

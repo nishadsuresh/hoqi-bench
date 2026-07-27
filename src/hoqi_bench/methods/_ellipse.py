@@ -92,12 +92,22 @@ def conic_to_heydemann_params(
     """
     x0, y0 = np.linalg.solve(np.array([[2 * A, B], [B, 2 * C]]), np.array([-D, -E]))
 
-    f0 = A * x0**2 + B * x0 * y0 + C * y0**2 + D * x0 + E * y0 + F
-    a_n, b_n, c_n = A / (-f0), B / (-f0), C / (-f0)
+    # A degenerate fitted conic (module docstring below) can make f0, or
+    # later c_n/g, exactly zero -- both "invalid" (0/0, sqrt-of-negative)
+    # and "divide" (x/0 -> inf) numpy warning categories are possible
+    # from this point on, and every caller checks np.isfinite() afterward
+    # and converts the resulting NaN/inf into a proper failed_result
+    # (docs/WEEK3_METHOD_CONTRACT.md sec2) -- an EXPECTED, handled
+    # outcome, silenced deliberately rather than left as an unexplained
+    # RuntimeWarning (found via scripts/robustness_matrix.py's
+    # all_identical_points cell, which legitimately hits this path).
+    with np.errstate(invalid="ignore", divide="ignore"):
+        f0 = A * x0**2 + B * x0 * y0 + C * y0**2 + D * x0 + E * y0 + F
+        a_n, b_n, c_n = A / (-f0), B / (-f0), C / (-f0)
 
-    g = float(np.sqrt(a_n / c_n))
-    sin_eps = -(b_n / c_n) / (2 * g)
-    cos_eps = float(np.sqrt(1.0 - sin_eps**2))
+        g = float(np.sqrt(a_n / c_n))
+        sin_eps = -(b_n / c_n) / (2 * g)
+        cos_eps = float(np.sqrt(1.0 - sin_eps**2))
     eps = float(np.arctan2(sin_eps, cos_eps))
 
     return float(x0), float(y0), g, eps
