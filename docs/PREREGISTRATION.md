@@ -26,15 +26,24 @@ the campaign it describes. A prereg that names parameters no code can actually b
 kind of drift this document exists to prevent, just at the specification stage instead of the
 analysis stage — hence this revision, made openly and dated, rather than silently.
 
-## External timestamp (open item, not yet resolved)
+## External timestamp
 
 A preregistration committed to a git repository the author controls, with a rewritable history, is
 not independently verifiable as having existed before the campaign ran -- it is a note to self until
-an external party holds a timestamp on it. **This needs an OSF preregistration or a Zenodo DOI minted
-before the Day 27 main-campaign launch.** This compounds with the project's still-unresolved GitHub
-push blocker (`docs/WEEK1-2_AUDIT.md`, prevalent issue B7): 10+ commits are not yet live on GitHub,
-so there is currently no external record of ANY of this work, preregistration included. Both need
-Nishi's action before Week 4.
+an external party holds a timestamp on it.
+
+**Resolved 2026-07-27**: registered on OSF at https://osf.io/qyw6t, Date Registered stamped
+2026-07-27 10:15 AM -- before Week 3 implementation begins and well before any main-campaign
+result. This is v2 of the document (see Revision history); v1 is preserved at
+`docs/PREREGISTRATION_v1_superseded.md` and was never independently timestamped, since the
+v1-to-v2 revision happened same-day, pre-data, specifically to avoid registering a document later
+found to name unexecutable parameters. As of registration, the OSF entry showed a "Pending
+approval" status pending moderator review -- the Date Registered timestamp is stamped regardless of
+that review outcome, since it is set at submission, not at approval.
+
+The GitHub push blocker (`docs/WEEK1-2_AUDIT.md`, prevalent issue B7) is also resolved as of
+2026-07-27: all commits are live on `main` at `github.com/nishadsuresh/hoqi-bench`, CI passing on
+both supported Python versions.
 
 ## Research questions (unchanged from v1)
 
