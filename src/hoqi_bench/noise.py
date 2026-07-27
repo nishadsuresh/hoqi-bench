@@ -117,14 +117,26 @@ def poisson_noise(
     every other transform without pretending shot noise literally vanishes
     at some intensity.
 
-    Failure mode: `photon_scale` must be positive (excluding None) and
-    `intensity * photon_scale` must be non-negative for Poisson's lambda
-    parameter to be valid -- this simulator's intensity is always
-    non-negative by construction (mean_intensity*(1 +/- contrast) with
-    contrast <= 1), so this isn't expected to be hit in practice, but is
-    not defended against here with an explicit guard, since a negative
-    intensity reaching this function would indicate a bug further upstream
-    worth seeing fail loudly (as a numpy warning/NaN), not silently caught.
+    Negative-intensity floor (docs/WEEK3-4_PLAN.md Part 1, P1 -- found by
+    `simulate.py`'s test suite, the first thing to compose this function
+    downstream of the classic distortions across the REAL swept parameter
+    range, not just at nominal values): this docstring previously claimed
+    non-negative intensity was guaranteed "by construction" and deliberately
+    left unguarded. That claim is false at the sweep's own deliberately
+    extreme conditions -- `transforms.amplitude_imbalance` at
+    `amplitude_ratio=1.3` (a real, preregistered axis value, chosen
+    specifically to find where methods break, per
+    docs/experimental_design.md) produces Q as low as -0.15 with ZERO noise
+    involved, a purely deterministic consequence of scaling AC content
+    around `mean_intensity` by a factor large enough to overshoot the
+    origin. Intensity is therefore CLAMPED to zero before computing
+    `lambda` below -- not a numerical band-aid, but the physically correct
+    behavior: a real photodiode cannot report a negative photon count, so a
+    detector actually operating at this (physically extreme, intentionally
+    boundary-probing) condition would simply read zero, not a negative
+    number. `photon_scale` itself must still be positive (excluding
+    `None`); that precondition is not violated by any config in this
+    project and is not separately guarded.
     """
     # ---- 1. Identity case: not modeling shot noise, no randomness drawn ----
     if photon_scale is None:
@@ -134,7 +146,10 @@ def poisson_noise(
     rng = np.random.default_rng(seed)
 
     def _apply(intensity: FloatArray) -> FloatArray:
-        photon_count_mean = intensity * photon_scale
+        # Clamp before computing lambda -- see the negative-intensity-floor
+        # note above; a real photodiode's photon count cannot be negative.
+        clamped_intensity = np.maximum(intensity, 0.0)
+        photon_count_mean = clamped_intensity * photon_scale
         sampled_count = rng.poisson(photon_count_mean).astype(np.float64)
         return sampled_count / photon_scale
 

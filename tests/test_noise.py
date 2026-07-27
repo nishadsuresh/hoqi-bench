@@ -113,6 +113,31 @@ def test_poisson_variance_is_proportional_to_intensity() -> None:
         assert rel_error < 0.05, f"failed at intensity={level}: rel_error={rel_error:.3f}"
 
 
+def test_poisson_noise_does_not_raise_on_negative_intensity() -> None:
+    """Regression test (docs/WEEK3-4_PLAN.md Part 1, P1): found when
+    simulate.py's test suite first composed poisson_noise downstream of
+    transforms.amplitude_imbalance at amplitude_ratio=1.3 (a real,
+    preregistered axis value), which produces Q as low as -0.15 with ZERO
+    noise -- a purely deterministic consequence of the classic distortion
+    model, not a noise artifact. Previously raised
+    `ValueError: lam < 0 or lam contains NaNs` from numpy's Poisson sampler.
+    Intensity is now clamped to zero before computing lambda -- the
+    physically correct behavior (a real photodiode cannot report a negative
+    photon count), not a numerical suppression of the error."""
+    intensity_i = np.array([-0.15, -0.01, 0.0, 0.5, 1.9])
+    intensity_q = np.array([1.0, 1.0, 1.0, 1.0, 1.0])
+
+    new_i, new_q = poisson_noise(intensity_i, intensity_q, photon_scale=1_000_000.0, seed=0)
+
+    assert np.all(np.isfinite(new_i))
+    assert np.all(np.isfinite(new_q))
+    # The two most-negative input samples should land at or near zero after
+    # the clamp (a Poisson draw at lambda=0 is always exactly 0, so the
+    # clamped-input samples' output must be exactly 0.0, not merely finite).
+    assert new_i[0] == 0.0
+    assert new_i[1] == 0.0
+
+
 def test_poisson_noise_deterministic_given_the_same_seed() -> None:
     baseline = np.full(500, 1.0)
     result_a = poisson_noise(baseline, baseline, photon_scale=10_000.0, seed=42)
