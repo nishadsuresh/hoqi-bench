@@ -1,14 +1,27 @@
 # Tiny config for fast smoke-testing (Day 0's .vscode/tasks.json "run smoke
 # sweep" task, and Day 26's end-to-end smoke test). Not a real experiment --
 # 2 methods x 3 conditions x 5 seeds, per Day 26's stated smoke-test shape.
+#
+# REVISED 2026-07-26 (Weeks 1-2 audit finding F9): baseline previously
+# covered only amplitude_ratio/arc_fraction -- config.py now requires every
+# baseline to cover the full REQUIRED_MODEL_PARAMS set, so a smoke config
+# can no longer validate while being silently unrunnable.
 
 methods = ["raw_atan2", "kasa"]
 n_seeds = 5
 tolerance = 0.01
 
 [baseline]
+mean_intensity = 1.0
+contrast = 0.9
 amplitude_ratio = 1.1
+quadrature_error_rad = 0.1
+dc_offset = 0.02
 arc_fraction = 1.0
+noise_std = 0.0
+samples_per_fit = 60
+hysteresis_magnitude = 0.0
+photon_scale = 1.0e7
 
 [axes]
 amplitude_ratio = [1.0, 1.1, 1.3]

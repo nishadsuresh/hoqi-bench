@@ -2,6 +2,23 @@
 # APPROVED 2026-07-26 (expanded per Nishad's request: finer resolution,
 # 30->50 seeds, 3 interaction grids, Taubin/Koning promoted to required
 # methods). See docs/PREREGISTRATION.md (Day 6) for the committed version.
+#
+# REVISED 2026-07-26 (Weeks 1-2 audit, pre-data v2 re-registration -- see
+# docs/PREREGISTRATION.md's "Revision history" and docs/WEEK1-2_AUDIT.md):
+# - samples_per_fit (A1) and hysteresis_magnitude/photon_scale (A2) added --
+#   the prior config could not answer RQ3 (no hysteresis axis) or RQ4 (no
+#   photon_scale axis), and samples-per-fit (N) was an unpreregistered free
+#   parameter driving a 7x error swing (0.0201 at N=20 vs 0.0028 at N=1000)
+#   despite being named nowhere in any config, constant, or schema field.
+# - mean_intensity/contrast added to baseline (A5) -- dc_offset, noise_std,
+#   and hysteresis_magnitude are specified as FRACTIONS of oscillation
+#   amplitude A = mean_intensity*contrast; resolve.py needs both baseline
+#   values to perform that conversion.
+# The 7-point samples_per_fit / hysteresis_magnitude / photon_scale ranges
+# below are engineering judgment (no reported value in Lehmann et al. 2025
+# for any of the three), flagged as such rather than disguised as
+# literature-derived, per this project's existing convention for
+# quadrature_error_rad and dc_offset.
 
 methods = ["raw_atan2", "kasa", "heydemann", "halir_flusser", "fitzgibbon", "taubin", "koning_wimmer_witkovsky"]
 n_seeds = 50
@@ -10,11 +27,23 @@ tolerance = 0.01  # 1% relative RMS error, matching quadrature-interferometer-si
 # "Typical hardware" operating point -- held constant for whichever
 # parameter isn't the one being swept in a given OFAT axis.
 [baseline]
+mean_intensity = 1.0        # normalization constant; A = mean_intensity*contrast for fraction conversion
+contrast = 0.9              # matches forward_model.py's and every existing test's default
 amplitude_ratio = 1.1       # Lehmann et al. 2025's reported typical value
 quadrature_error_rad = 0.1  # NOT paper-derived -- see experimental_design.md's flag
 dc_offset = 0.02            # fraction of amplitude A; NOT paper-derived -- see flag
 arc_fraction = 1.0          # full circle by default
 noise_std = 0.0             # noiseless by default
+samples_per_fit = 60        # matches experimental_design.md's original "~60 points" assumption
+hysteresis_magnitude = 0.0  # no hysteresis by default
+# photon_scale (RQ4): photons per unit of this simulator's dimensionless
+# intensity -- an ALTERNATIVE noise model to noise_std (Gaussian), not
+# combined with it (noise.py's gaussian_noise/poisson_noise are mutually
+# exclusive per pipeline.py). This baseline value is a large placeholder
+# for "negligible shot noise," not true "off" -- no finite photon_scale is
+# exactly equivalent to noise_std=0.0, since any real detector receiving
+# light has SOME shot noise (see noise.py's poisson_noise docstring).
+photon_scale = 1.0e7
 
 # One-factor-at-a-time sweeps (Section 3 of experimental_design.md).
 [axes]
@@ -23,6 +52,16 @@ quadrature_error_rad = [0.0, 0.02, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5]
 dc_offset = [0.0, 0.01, 0.02, 0.05, 0.08, 0.1, 0.15, 0.2]
 arc_fraction = [1.0, 0.75, 0.5, 0.35, 0.25, 0.15, 0.1, 0.05, 0.02]
 noise_std = [0.0, 0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.08, 0.1]
+# Runtime is not a constraint (117,950 fits measured at 1.3s total -- Weeks
+# 1-2 audit), so N is swept over a wide range to produce a practitioner-
+# facing "for noise sigma, use N points to reach accuracy epsilon" chart.
+samples_per_fit = [20, 40, 60, 100, 200, 500, 1000]
+# Same shape as dc_offset's fractional range -- both are radius-scale
+# perturbations with no reported magnitude in Lehmann et al. 2025.
+hysteresis_magnitude = [0.0, 0.01, 0.02, 0.05, 0.08, 0.1, 0.15, 0.2]
+# RQ4: swept independently of noise_std (the two noise models are
+# alternatives, not combined -- see the baseline comment above).
+photon_scale = [100, 500, 1000, 5000, 10000, 50000, 100000]
 
 # Three 2D interaction grids (Section 3 of experimental_design.md).
 [grids.arc_x_noise]

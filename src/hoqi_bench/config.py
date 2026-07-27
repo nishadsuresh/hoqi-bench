@@ -15,7 +15,18 @@ number visible and checked before any sweep runs, not after.
 Pipeline position: loaded by scripts/run_sweep.py (Day 24) before the main
 campaign launches; also directly used by tests/test_config.py's rejection
 tests to confirm malformed configs fail loudly and specifically, not
-silently or with an unhelpful generic error.
+silently or with an unhelpful generic error. `resolve.py` consumes a loaded
+`SweepConfig` to produce the actual per-condition parameter manifest.
+
+Weeks 1-2 audit (2026-07-26, findings F2/F4/F5/F6/F9): a config could
+previously validate cleanly while covering only SOME of the model's actual
+parameters (finding F9 -- `configs/smoke.toml` validated while missing
+`dc_offset`/`noise_std`/`quadrature_error_rad` entirely). `_validate` below
+now also requires `baseline` to cover `REQUIRED_MODEL_PARAMS` -- every
+parameter the forward model/transform pipeline actually consumes, not just
+whatever the config happens to sweep -- so a config that cannot fully
+specify a run fails at load time, not silently at whatever point Week 4's
+harness first reaches for a parameter nobody supplied.
 """
 
 from __future__ import annotations
@@ -27,6 +38,32 @@ try:
     import tomllib  # type: ignore[import-not-found]  # Python 3.11+
 except ModuleNotFoundError:
     import tomli as tomllib  # Python 3.10 fallback -- see docs/journal/day00.md
+
+# Every parameter the forward model + transform pipeline actually consumes,
+# as of Week 2's composable pipeline (forward_model.py, transforms.py,
+# noise.py). A baseline must supply ALL of these -- not just whatever this
+# config happens to sweep -- so every condition is fully specified before any
+# run starts (Weeks 1-2 audit finding F9).
+REQUIRED_MODEL_PARAMS = frozenset({
+    "mean_intensity",
+    "contrast",
+    "amplitude_ratio",
+    "quadrature_error_rad",
+    "dc_offset",
+    "arc_fraction",
+    "noise_std",
+    "samples_per_fit",
+    "hysteresis_magnitude",
+    "photon_scale",
+})
+
+# Parameters expressed in the config as a FRACTION of oscillation amplitude
+# A = mean_intensity * contrast (docs/experimental_design.md's "* A" ranges),
+# not as absolute values -- resolve.py converts these before any transform
+# call (Weeks 1-2 audit finding F2: transforms.dc_offset/noise.gaussian_noise
+# take absolute values, and nothing previously converted between the two,
+# a silent 1.11x error at A=0.9).
+FRACTION_OF_AMPLITUDE_PARAMS = frozenset({"dc_offset", "noise_std", "hysteresis_magnitude"})
 
 
 class ConfigError(ValueError):
@@ -163,6 +200,18 @@ def _validate(raw: dict[str, object], source: str) -> SweepConfig:
                 f"{sorted(missing_baseline)} (held constant while '{swept_name}' varies), "
                 f"but baseline is missing {sorted(missing_baseline)}"
             )
+
+    # Baseline must cover every parameter the model actually consumes, not
+    # just whatever this config happens to sweep -- otherwise a condition
+    # can validate cleanly and still be unrunnable (Weeks 1-2 audit finding
+    # F9: configs/smoke.toml previously passed while missing 3 of these).
+    missing_required = REQUIRED_MODEL_PARAMS - baseline.keys()
+    if missing_required:
+        raise ConfigError(
+            f"{source}: 'baseline' is missing required model parameter(s) "
+            f"{sorted(missing_required)} -- every parameter the forward model/pipeline "
+            f"consumes must have a baseline value, whether or not this config sweeps it"
+        )
 
     return SweepConfig(
         axes=axes, grids=grids, baseline=baseline,
