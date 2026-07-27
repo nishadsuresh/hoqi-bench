@@ -167,3 +167,25 @@ Approved 2026-07-26: both engineering-judgment ranges (`eps`, DC offset) kept as
 proposed; sweep expanded on all four requested fronts (finer per-axis resolution, seeds 30→50,
 two additional interaction grids, and Taubin/Köning promoted from stretch goals to required
 methods). This is now the locked design feeding into Day 6's `docs/PREREGISTRATION.md`.
+
+## v2 addendum (2026-07-26, Weeks 1-2 audit -- see docs/PREREGISTRATION.md and docs/WEEK1-2_AUDIT.md)
+
+Three axes added, none of which existed in `src/` or the config when this document was first
+approved above, despite RQ3/RQ4/RQ6 needing them:
+
+- **`samples_per_fit` (N)**: 7 points, `[20, 40, 60, 100, 200, 500, 1000]`, baseline 60 (matching
+  this document's own earlier "~60 points" assumption in Section 3, which was never actually
+  specified anywhere in code -- measured to drive a 7x swing in mean center error across this
+  range). Runtime is not a constraint at this problem size (117,950 fits measured at 1.3 seconds
+  total), so the full range is swept, producing RQ6's N-vs-noise design chart.
+- **`hysteresis_magnitude`**: 8 points, `[0.0, 0.01, 0.02, 0.05, 0.08, 0.1, 0.15, 0.2] * A` -- same
+  shape as the DC-offset range above (no reported magnitude in Lehmann et al. 2025 for this
+  parameter either, flagged the same way), needed for RQ3 to be answerable at all from the config.
+- **`photon_scale`**: 7 points, `[100, 500, 1000, 5000, 10000, 50000, 100000]`, baseline `1.0e7`
+  (an engineering-judgment placeholder for "negligible shot noise," not true "off" -- see
+  `noise.py`'s `poisson_noise` docstring) -- needed for RQ4 to be answerable at all from the config.
+
+Updated total: `10(g) + 10(eps) + 8(dc) + 9(arc) + 10(noise) + 7(N) + 8(hyst) + 7(photon) + 90 +
+100 + 100 = 359` conditions x 7 methods x 50 seeds = **125,650** runs, again computed
+programmatically by `config.SweepConfig.total_runs()` against the actual
+`configs/main_campaign.toml`, not by hand.

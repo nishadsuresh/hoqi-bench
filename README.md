@@ -16,12 +16,25 @@ newer nonlinearity classes (power-law residual scaling, direction-dependent hyst
 Lehmann et al. 2025, which the classic static-fitting literature predates. This is a simulation
 study — no real HoQI hardware, no external peer review before release.
 
-**Status:** Week 2 of 6 complete (Days 0-14 of a 42-day build plan). Documentation standard,
-literature review, experimental design, and preregistration all done and adversarially reviewed;
-the full composable forward model (all 7 distortion classes from the classic Heydemann parameters
-through direction-dependent hysteresis) implemented and validated (47/47 tests passing). Method
-implementations (Kasa, Heydemann, Halir & Flusser, Fitzgibbon, Taubin, Köning/Wimmer/Witkovský)
-begin Week 3.
+**Status:** Weeks 1-2 of 6 complete (Days 0-14 of a 42-day build plan), plus a same-day adversarial
+audit and remediation before Week 3 begins (`docs/WEEK1-2_AUDIT.md`). The audit found 11 code-verified
+defects behind an initially-green test suite -- most seriously, the hysteresis transform derived
+direction-of-travel from the noisy measured signal rather than ground truth, and the preregistered
+parameter space omitted axes (`arc_fraction`, `hysteresis_magnitude`, `photon_scale`,
+`samples_per_fit`) that RQ3/RQ4/RQ6 needed to be answerable at all. All 11 are fixed; the
+preregistration was superseded and re-registered as v2 (`docs/PREREGISTRATION.md`,
+`docs/PREREGISTRATION_v1_superseded.md`) while the project was still pre-data, per a second
+adversarial llm-council review's recommendation. The full composable forward model (all 7
+distortion classes from the classic Heydemann parameters through direction-dependent hysteresis),
+the config-to-run resolver, seed-pairing discipline, and the Week 3 method contract are implemented
+and validated (75/75 tests passing). Method implementations (Kasa, Heydemann, Halir & Flusser,
+Fitzgibbon, Taubin, Köning/Wimmer/Witkovský) begin Week 3, against `docs/WEEK3_METHOD_CONTRACT.md`'s
+pre-written pass criteria.
+
+**Open items, not yet resolved**: 10+ commits are not yet pushed to GitHub (a `workflow` OAuth scope
+issue); the preregistration needs an external OSF/Zenodo timestamp before Week 4's campaign launches,
+since a document in a repository the author controls is a note to self until an external party
+holds a timestamp on it.
 
 ## Setup
 
@@ -40,20 +53,27 @@ python scripts/explore_ellipse_constraints.py    # Fitzgibbon vs Halir & Flusser
 
 ```
 src/hoqi_bench/        # the installable package
-  config.py            # TOML sweep-config schema, validation, total_runs()
+  config.py            # TOML sweep-config schema, validation, total_runs(), REQUIRED_MODEL_PARAMS
   forward_model.py     # ideal (distortion-free) interferometer, ported and verified
   pipeline.py           # composable transform architecture (apply_pipeline, Transform type)
   transforms.py         # amplitude imbalance, quadrature phase error, DC offset, hysteresis
   noise.py               # Gaussian and Poisson (signal-dependent) detector noise
   power_law.py           # power-law exponent characterization for RQ3
+  arc.py                 # arc_fraction displacement-ramp generator
+  resolve.py              # config -> per-condition run manifest, fraction-to-absolute conversion
+  seeds.py                # derive_seed(): structurally-paired seed derivation across methods
+  metrics.py              # wrapped_phase_error(): circular-statistics phase-error metric
   _types.py               # shared type aliases
-tests/                 # pytest suite (47 tests)
+tests/                 # pytest suite (75 tests)
 scripts/               # standalone exploratory/verification scripts
 configs/               # sweep configuration TOML files
 docs/
   DOCUMENTATION_STANDARD.md            # the 7 rules every module follows
-  PREREGISTRATION.md                   # committed research questions, parameters, protocol
-  experimental_design.md               # the approved, expanded sweep design
+  PREREGISTRATION.md                   # v2: committed research questions, parameters, protocol
+  PREREGISTRATION_v1_superseded.md     # v1, superseded same-day -- kept verbatim, with postmortem
+  WEEK1-2_AUDIT.md                     # the Weeks 1-2 adversarial audit that drove the v2 revision
+  WEEK3_METHOD_CONTRACT.md             # pre-Week-3 contract: circular stats, fit-failure, Day 21 gate
+  experimental_design.md               # the approved, expanded sweep design (+ v2 addendum)
   derivations/heydemann.md             # from-scratch, symbolically-verified derivation
   forward_model_validation_summary.md  # Week 2 close-out: every distortion class, test, property
   journal/                             # dayNN.md, one per day of the build plan
@@ -70,20 +90,29 @@ checks over visual, unit tests in isolation before integration, and re-running t
 previously-failing case plus everything already passing after any fix.
 
 The full research plan — preregistered research questions, parameter space, metrics, and
-statistical protocol — is in `docs/PREREGISTRATION.md`, which itself documents a full adversarial
-review pass (5 independent critiques, cross-peer-reviewed, synthesized) run against it before any
-data collection, per the project's own preregistration discipline.
+statistical protocol — is in `docs/PREREGISTRATION.md` (v2), which documents two rounds of
+adversarial review: the original 5-advisor llm-council review before any data collection (preserved
+in `docs/PREREGISTRATION_v1_superseded.md`), and a second Weeks 1-2 audit + llm-council review
+(`docs/WEEK1-2_AUDIT.md`) that found the first version committed to research questions its own
+config file couldn't execute, and led to the v2 revision -- both done, per this project's own
+preregistration discipline, before Week 3 began and before any campaign data existed.
 
-## Honest limitations (see `docs/PREREGISTRATION.md` and `docs/journal/` for full detail)
+## Honest limitations (see `docs/PREREGISTRATION.md`, `docs/WEEK1-2_AUDIT.md`, and `docs/journal/` for full detail)
 
 - **Simulation only.** No real HoQI hardware, no real bench data, no external peer review before
   release.
-- **Two parameter ranges are engineering judgment, not literature-derived** (quadrature phase error,
-  DC offset) — explicitly flagged as such throughout, not disguised as paper-grounded numbers.
+- **Three parameter ranges are engineering judgment, not literature-derived** (quadrature phase
+  error, DC offset, and, new in v2, hysteresis magnitude/photon_scale/samples_per_fit's specific
+  grid points) — explicitly flagged as such throughout, not disguised as paper-grounded numbers.
 - **One required method (Köning/Wimmer/Witkovský) is implemented from the general algorithm family
   it belongs to** (errors-in-variables estimation via iterated Taylor linearization, per the CRAN
   `OEFPIL` package this method generalizes into), not from the original 2014 paper's own text, which
   remains paywalled and unread.
+- **The preregistration has no external timestamp yet.** A document in a repository the author
+  controls, with a rewritable history, is not independently verifiable as pre-dating the campaign --
+  an OSF preregistration or Zenodo DOI is needed before Week 4, and is not yet in place.
+- **10+ commits are not yet pushed to GitHub** (a `workflow` OAuth scope issue) -- there is currently
+  no external record of most of this work, the preregistration included.
 
 ## References
 
