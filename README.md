@@ -16,9 +16,12 @@ newer nonlinearity classes (power-law residual scaling, direction-dependent hyst
 Lehmann et al. 2025, which the classic static-fitting literature predates. This is a simulation
 study — no real HoQI hardware, no external peer review before release.
 
-**Status:** Week 1 of 6 complete (Days 0-7 of a 42-day build plan). Forward model, documentation
-standard, literature review, experimental design, and preregistration all done and adversarially
-reviewed; method implementations begin Week 2.
+**Status:** Week 2 of 6 complete (Days 0-14 of a 42-day build plan). Documentation standard,
+literature review, experimental design, and preregistration all done and adversarially reviewed;
+the full composable forward model (all 7 distortion classes from the classic Heydemann parameters
+through direction-dependent hysteresis) implemented and validated (47/47 tests passing). Method
+implementations (Kasa, Heydemann, Halir & Flusser, Fitzgibbon, Taubin, Köning/Wimmer/Witkovský)
+begin Week 3.
 
 ## Setup
 
@@ -36,18 +39,24 @@ python scripts/explore_ellipse_constraints.py    # Fitzgibbon vs Halir & Flusser
 ## Project structure
 
 ```
-src/hoqi_bench/       # the installable package
-  config.py           # TOML sweep-config schema, validation, total_runs()
+src/hoqi_bench/        # the installable package
+  config.py            # TOML sweep-config schema, validation, total_runs()
   forward_model.py     # ideal (distortion-free) interferometer, ported and verified
-tests/                 # pytest suite
+  pipeline.py           # composable transform architecture (apply_pipeline, Transform type)
+  transforms.py         # amplitude imbalance, quadrature phase error, DC offset, hysteresis
+  noise.py               # Gaussian and Poisson (signal-dependent) detector noise
+  power_law.py           # power-law exponent characterization for RQ3
+  _types.py               # shared type aliases
+tests/                 # pytest suite (47 tests)
 scripts/               # standalone exploratory/verification scripts
 configs/               # sweep configuration TOML files
 docs/
-  DOCUMENTATION_STANDARD.md   # the 7 rules every module follows
-  PREREGISTRATION.md          # committed research questions, parameters, protocol
-  experimental_design.md      # the approved, expanded sweep design
-  derivations/heydemann.md    # from-scratch, symbolically-verified derivation
-  journal/                    # dayNN.md, one per day of the build plan
+  DOCUMENTATION_STANDARD.md            # the 7 rules every module follows
+  PREREGISTRATION.md                   # committed research questions, parameters, protocol
+  experimental_design.md               # the approved, expanded sweep design
+  derivations/heydemann.md             # from-scratch, symbolically-verified derivation
+  forward_model_validation_summary.md  # Week 2 close-out: every distortion class, test, property
+  journal/                             # dayNN.md, one per day of the build plan
 notes/                 # per-paper reading notes, related-work table, contribution claim
 refs/references.bib     # verified bibliography
 ```
