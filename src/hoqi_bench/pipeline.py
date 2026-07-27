@@ -41,20 +41,32 @@ relative to the other two doesn't change the math -- applied last here to
 match the natural construction order: build the distorted oscillation first,
 then add each channel's constant bias on top.
 
+Full documented order, as actually implemented by Days 9-14 (this is prose,
+not an executable registry -- `apply_pipeline` takes a caller-supplied list
+of already-parameterized callables, per the design decision below, so there
+is no single canonical list for real code to consult; the order below is
+what every caller in this codebase actually constructs, and what
+`test_forward_geometry.py`'s keystone test checks against):
+1. `transforms.quadrature_phase_error` -- mixing, on the still-unscaled signal
+2. `transforms.amplitude_imbalance` -- scales the whole post-mixing Q content
+3. `transforms.dc_offset` -- additive, commutes with 1-2, placed last by convention
+4. `noise.gaussian_noise` OR `noise.poisson_noise` -- mutually exclusive in
+   practice (RQ4 compares them, doesn't combine them); noise is per-sample and
+   independent, so its position relative to 1-3 doesn't change the result
+5. `hysteresis` -- must be last: it needs the FINAL phase trajectory (after
+   every other distortion) to determine local direction of travel correctly
+
 Pipeline position: `forward_model.simulate_ideal_interferometer` produces
-the ideal (I, Q); `apply_pipeline` (or, until Days 9-14 land, an empty
-transform list) is called on its output before any analysis method
-(Days 15-20) sees the signal.
+the ideal (I, Q); `apply_pipeline` is called on its output, with a
+caller-supplied list of transforms in the order above, before any analysis
+method (Days 15-20) sees the signal.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 
-import numpy as np
-from numpy.typing import NDArray
-
-FloatArray = NDArray[np.float64]
+from hoqi_bench._types import FloatArray
 
 # A transform takes (I, Q) and returns the distorted (I, Q). Parameters are
 # bound via functools.partial or a lambda at pipeline-construction time, not
@@ -62,19 +74,6 @@ FloatArray = NDArray[np.float64]
 # distortion-agnostic (it doesn't need to know what parameters any given
 # transform takes).
 Transform = Callable[[FloatArray, FloatArray], tuple[FloatArray, FloatArray]]
-
-# The documented, physically-justified order later transforms (Days 9-14)
-# are added in. Not yet populated with real transforms -- Day 8's scope is
-# the architecture and the keystone test only.
-TRANSFORM_ORDER: tuple[str, ...] = (
-    "quadrature_phase_error",  # mixing, applied to the still-unscaled signal
-    "amplitude_imbalance",  # scales the whole post-mixing Q content
-    "dc_offset",  # additive, commutes with the above -- applied last by convention
-    "gaussian_noise",  # Day 11
-    "poisson_noise",  # Day 12 (mutually exclusive with gaussian_noise in practice)
-    "power_law_nonlinearity",  # Day 13 -- pending the ambiguity noted in notes/lehmann_2025.md
-    "hysteresis",  # Day 14 -- must be last: path-dependent, needs the final phase trajectory
-)
 
 
 def apply_pipeline(

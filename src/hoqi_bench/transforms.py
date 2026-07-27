@@ -22,9 +22,8 @@ order tried first for the first two).
 from __future__ import annotations
 
 import numpy as np
-from numpy.typing import NDArray
 
-FloatArray = NDArray[np.float64]
+from hoqi_bench._types import FloatArray
 
 
 def amplitude_imbalance(
@@ -113,3 +112,69 @@ def dc_offset(
     parameter value.
     """
     return intensity_i + dc_offset_i, intensity_q + dc_offset_q
+
+
+def hysteresis(
+    intensity_i: FloatArray,
+    intensity_q: FloatArray,
+    mean_intensity: float,
+    hysteresis_magnitude: float,
+) -> tuple[FloatArray, FloatArray]:
+    """Direction-dependent (path-dependent) radial perturbation, per
+    Lehmann et al. 2025's finding (`notes/lehmann_2025.md`, Section IV.A)
+    that residual radius deviation traces different paths depending on the
+    direction of phase travel. `hysteresis_magnitude=0.0` is an exact
+    identity.
+
+    WHY THIS TRANSFORM CANNOT BE PURE POINTWISE, UNLIKE EVERY OTHER
+    TRANSFORM IN THIS MODULE: amplitude_imbalance, quadrature_phase_error,
+    and dc_offset each compute their output for sample i using ONLY sample
+    i's own (I,Q) value -- a static, memoryless mapping. Hysteresis is
+    fundamentally different: "direction of travel" is not a property of a
+    single point, it's a property of how phase is CHANGING between
+    neighboring points. This function must look at the whole array's local
+    phase gradient (via np.gradient) to determine, at each sample, whether
+    phase is locally increasing or decreasing -- it carries this
+    neighbor-dependent state through the whole computation, rather than
+    mapping each point independently of its neighbors.
+
+    Model: radius is perturbed by exactly hysteresis_magnitude in the
+    direction of local phase travel (angle preserved, only radius changes)
+    -- a phase sweep going "up" ends up on a circle/ellipse of radius R+h,
+    the same phase values reached while sweeping "down" end up at R-h,
+    tracing two visibly different paths through the same phase range. This
+    is a deliberately simple model (not derived from a specific numbered
+    equation in Lehmann et al., who characterize this qualitatively rather
+    than with one closed-form hysteresis equation) chosen because it
+    produces the two testable, unambiguous properties this project's
+    documentation standard requires: the up and down paths must differ, and
+    the loop area between them must scale with `hysteresis_magnitude` --
+    both verified empirically in tests/test_hysteresis.py before being
+    written into this docstring as fact.
+
+    Failure mode: at a sample where radius is exactly zero (i_ac=q_ac=0),
+    "direction preserving angle, perturbing radius" is undefined (a point
+    at the origin has no angle) -- guarded by leaving such a sample
+    unperturbed rather than dividing by zero. Not expected to occur for any
+    realistic non-degenerate oscillating signal (radius is only zero at an
+    isolated instant, if ever), so this guard is a robustness safeguard,
+    not a case this project's own test data is expected to exercise.
+    """
+    # ---- 1. Identity case: no path-dependence, no neighbor lookup needed ----
+    if hysteresis_magnitude == 0.0:
+        return intensity_i, intensity_q
+
+    # ---- 2. AC-centered coordinates ----
+    i_ac = intensity_i - mean_intensity
+    q_ac = intensity_q - mean_intensity
+
+    # ---- 3. Local direction of phase travel (the neighbor-dependent state) ----
+    phase = np.unwrap(np.arctan2(q_ac, i_ac))
+    direction = np.sign(np.gradient(phase))
+
+    # ---- 4. Perturb radius by the direction-dependent amount, preserving angle ----
+    radius = np.sqrt(i_ac**2 + q_ac**2)
+    safe_radius = np.where(radius == 0.0, 1.0, radius)  # guard div-by-zero; unperturbed below
+    scale = np.where(radius == 0.0, 1.0, (radius + hysteresis_magnitude * direction) / safe_radius)
+
+    return i_ac * scale + mean_intensity, q_ac * scale + mean_intensity

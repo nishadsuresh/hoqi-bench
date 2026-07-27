@@ -75,17 +75,21 @@ def simulate_ideal_interferometer(
     (I, Q, x_true) -- the two detector signals and the ground-truth displacement
     (returned for validation; a real system would not have x_true).
     """
+    # ---- 1. Ground-truth displacement and phase ----
     rng = np.random.default_rng(seed)
 
     x_true = displacement_fn(t)
     phi = 4 * np.pi * x_true / wavelength_m
 
+    # ---- 2. Ideal quadrature intensities ----
     intensity_i = mean_intensity * (1 + contrast * np.cos(phi))
     intensity_q = mean_intensity * (1 + contrast * np.sin(phi))
 
+    # ---- 3. Environmental disturbances (shared by both channels) ----
     mains = mains_amplitude * np.sin(2 * np.pi * mains_freq_hz * t)
     drift = drift_amplitude * np.sin(2 * np.pi * drift_freq_hz * t)
 
+    # ---- 4. Assemble final signals: ideal + disturbances + detector noise ----
     intensity_i = (
         intensity_i
         + mains

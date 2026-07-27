@@ -35,15 +35,14 @@ statistical method applied to their reported relationship.
 Pipeline position: called by Day 30's RQ3 analysis (once Days 15-20's
 methods exist and produce real error-vs-magnitude sweep data), not by the
 forward model itself -- this module has no `Transform`-compatible function
-and is not registered in `pipeline.TRANSFORM_ORDER`.
+and is never composed into `pipeline.apply_pipeline`'s transform sequence.
 """
 
 from __future__ import annotations
 
 import numpy as np
-from numpy.typing import NDArray
 
-FloatArray = NDArray[np.float64]
+from hoqi_bench._types import FloatArray
 
 
 def fit_power_law_exponent(
@@ -72,6 +71,7 @@ def fit_power_law_exponent(
     exactly 0) must be excluded by the caller before calling this function,
     not passed in and silently producing NaN/-inf.
     """
+    # ---- 1. Reject inputs a log-log fit cannot handle ----
     if np.any(magnitudes <= 0) or np.any(errors <= 0):
         raise ValueError(
             "fit_power_law_exponent requires strictly positive magnitudes and errors "
@@ -79,14 +79,17 @@ def fit_power_law_exponent(
             "zero-distortion / zero-error condition before calling this function"
         )
 
+    # ---- 2. Linearize: log(error) = exponent*log(magnitude) + log(coefficient) ----
     log_magnitudes = np.log(magnitudes)
     log_errors = np.log(errors)
 
+    # ---- 3. Ordinary least squares in log-log space ----
     design = np.column_stack([log_magnitudes, np.ones_like(log_magnitudes)])
-    coeffs, residuals, _, _ = np.linalg.lstsq(design, log_errors, rcond=None)
+    coeffs, _, _, _ = np.linalg.lstsq(design, log_errors, rcond=None)
     exponent, log_coefficient = coeffs
     coefficient = np.exp(log_coefficient)
 
+    # ---- 4. Goodness of fit (R^2), returned so a poor fit is visible, not hidden ----
     predicted_log_errors = design @ coeffs
     ss_res = np.sum((log_errors - predicted_log_errors) ** 2)
     ss_tot = np.sum((log_errors - np.mean(log_errors)) ** 2)

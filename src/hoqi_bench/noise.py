@@ -39,9 +39,8 @@ would read, and noise is what corrupts that reading).
 from __future__ import annotations
 
 import numpy as np
-from numpy.typing import NDArray
 
-FloatArray = NDArray[np.float64]
+from hoqi_bench._types import FloatArray
 
 
 def gaussian_noise(
@@ -65,9 +64,11 @@ def gaussian_noise(
     Failure mode: none at any parameter value -- Gaussian noise is
     well-defined for any `noise_std >= 0` and any seed.
     """
+    # ---- 1. Identity case: no noise, no randomness drawn ----
     if noise_std == 0.0:
         return intensity_i, intensity_q
 
+    # ---- 2. Independent noise draws per channel (see design decision above) ----
     rng = np.random.default_rng(seed)
     # Two separate calls (not one call reshaped) to guarantee independence --
     # a single call producing 2N samples split in half would still be
@@ -75,6 +76,8 @@ def gaussian_noise(
     # obvious rather than relying on reshaping being done correctly.
     noise_i = rng.normal(0.0, noise_std, size=intensity_i.shape)
     noise_q = rng.normal(0.0, noise_std, size=intensity_q.shape)
+
+    # ---- 3. Combine ----
     return intensity_i + noise_i, intensity_q + noise_q
 
 
@@ -123,9 +126,11 @@ def poisson_noise(
     intensity reaching this function would indicate a bug further upstream
     worth seeing fail loudly (as a numpy warning/NaN), not silently caught.
     """
+    # ---- 1. Identity case: not modeling shot noise, no randomness drawn ----
     if photon_scale is None:
         return intensity_i, intensity_q
 
+    # ---- 2. Intensity -> photon count -> Poisson draw -> back to intensity units ----
     rng = np.random.default_rng(seed)
 
     def _apply(intensity: FloatArray) -> FloatArray:
@@ -133,6 +138,5 @@ def poisson_noise(
         sampled_count = rng.poisson(photon_count_mean).astype(np.float64)
         return sampled_count / photon_scale
 
-    # Separate rng draws for I and Q, same independence rationale as
-    # gaussian_noise above.
+    # ---- 3. Independent draws per channel, same rationale as gaussian_noise above ----
     return _apply(intensity_i), _apply(intensity_q)
