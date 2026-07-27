@@ -84,6 +84,7 @@ from __future__ import annotations
 import numpy as np
 
 from hoqi_bench._types import FloatArray
+from hoqi_bench.methods._ellipse import apply_heydemann_correction
 from hoqi_bench.methods.base import FitResult, failed_result
 
 NAME = "heydemann"
@@ -145,9 +146,10 @@ def fit(intensity_i: FloatArray, intensity_q: FloatArray) -> FitResult:
     cos_eps = float(np.sqrt(1.0 - sin_eps**2))
     eps = float(np.arctan2(sin_eps, cos_eps))
 
-    # ---- 3. Apply the closed-form correction (heydemann.md Sections 3-7) ----
-    i_c = i_centered
-    q_c = (q_centered - g * sin_eps * i_c) / (g * cos_eps)
+    # ---- 3. Apply the closed-form correction (heydemann.md Sections 3-7),
+    # via the shared post-fit helper -- see _ellipse.py's module docstring
+    # for why this step is legitimate to share across methods ----
+    i_c, q_c = apply_heydemann_correction(intensity_i, intensity_q, dc_i, dc_q, g, eps)
 
     # ---- 4. Self-consistency guard: a valid correction maps the
     # trajectory onto a circle, so its radius should be ~constant --
