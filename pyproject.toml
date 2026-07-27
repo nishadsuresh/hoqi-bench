@@ -30,6 +30,18 @@ dev = [
     "nbclient>=0.10",
     "nbformat>=5.10",
 ]
+# Tier 2 external cross-validation (docs/WEEK3-4_PLAN.md Day 19, moved up
+# from Day 21 deliberately -- days of debugging headroom instead of hours
+# before a blocking gate): NEVER a runtime dependency of the package
+# itself, only of tests/test_external_cross_validation.py. Known coverage
+# hole, stated plainly rather than papered over: these two packages cover
+# only Halir & Flusser and Fitzgibbon -- the two most algebraically
+# similar of the 7 methods. Kasa, Heydemann, Taubin, and Koning remain
+# externally uncrossed and rely on the Tier 1 analytic oracle (Day 21).
+validation = [
+    "lsq-ellipse==2.2.1",
+    "ellipsinator==0.3.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -56,6 +68,13 @@ files = ["src/hoqi_bench", "tests", "scripts", "conftest.py"]
 # pinned above) -- these are missing-stub warnings, not real type errors, so
 # silencing them here is scoped to exactly that, not a blanket ignore.
 module = ["scipy.*", "sympy.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# lsq-ellipse (imported as `ellipse`) and ellipsinator (Day 19's Tier 2
+# external cross-validation, tests/test_external_cross_validation.py) ship
+# no py.typed marker / published stubs either -- same rationale as above.
+module = ["ellipse.*", "ellipsinator.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
