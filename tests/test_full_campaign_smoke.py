@@ -26,7 +26,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from hoqi_bench.config import load_sweep_config
-from hoqi_bench.methods import METHOD_REGISTRY
+from hoqi_bench.methods import METHOD_REGISTRY, fit_by_name
 from hoqi_bench.resolve import iter_conditions
 from hoqi_bench.simulate import simulate_condition
 
@@ -46,13 +46,14 @@ def test_sustained_load_across_all_methods_does_not_crash() -> None:
     for condition in conditions:
         for seed_index in range(5):
             signal = simulate_condition(condition.resolved, condition.name, seed_index)
-            for name, fit_fn in METHOD_REGISTRY.items():
-                kwargs = (
-                    {"mean_intensity": condition.resolved["mean_intensity"]}
-                    if name == "raw_atan2"
-                    else {}
+            for name in METHOD_REGISTRY:
+                # must not raise
+                fit_by_name(
+                    name,
+                    signal.i,
+                    signal.q,
+                    mean_intensity=condition.resolved["mean_intensity"],
                 )
-                fit_fn(signal.i, signal.q, **kwargs)  # must not raise
                 n_completed += 1
 
     assert n_completed >= 40 * 5 * 7

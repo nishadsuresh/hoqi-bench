@@ -22,10 +22,10 @@ from scripts.robustness_matrix import ADVERSARIAL_INPUTS, classify
 
 def test_no_method_crashes_on_any_adversarial_input() -> None:
     crashes = []
-    for method_name, fit_fn in METHOD_REGISTRY.items():
+    for method_name in METHOD_REGISTRY:
         for input_name, input_fn in ADVERSARIAL_INPUTS.items():
             i, q = input_fn()
-            outcome = classify(method_name, fit_fn, i, q)
+            outcome = classify(method_name, i, q)
             if outcome.startswith("CRASH"):
                 crashes.append(f"{method_name} / {input_name}: {outcome}")
 

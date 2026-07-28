@@ -89,6 +89,26 @@ def conic_to_heydemann_params(
     callers must catch this and convert it to a `failed_result`, per
     `docs/WEEK3_METHOD_CONTRACT.md` sec2 (not caught here, so each caller's
     reason code can reflect its own context).
+
+    Second failure mode, measured 2026-07-27 (Week 3 review) and
+    deliberately NOT guarded: a NEAR-singular center-solve does not raise,
+    and can return a finite but physically absurd center that passes every
+    caller's `np.isfinite` check. Confirmed directly --
+    `conic_to_heydemann_params(1e-18, 0, 1e-18, 1, 1, 1)` returns a center
+    of `-5e17` with `all_finite=True`, and every caller would report
+    `failed=False` on it.
+
+    Left unguarded because it is unreachable from the campaign, which was
+    checked rather than assumed: across all 359 conditions x 3 seeds, every
+    single gross-error fit from all four conic-fitting callers recovered a
+    center within 0.16 of the data's own span (median 0.03) -- these are
+    plausible fits that are simply wrong at small `arc_fraction`, which is a
+    real result, not this pathology. Adding a plausibility bound would
+    therefore change no campaign number while adding a threshold with
+    nothing to calibrate it against, which `docs/DOCUMENTATION_STANDARD.md`
+    explicitly rules out ("don't guard against calls this codebase never
+    makes"). Recorded here so a future config exploring more extreme
+    geometry knows the path exists.
     """
     x0, y0 = np.linalg.solve(np.array([[2 * A, B], [B, 2 * C]]), np.array([-D, -E]))
 

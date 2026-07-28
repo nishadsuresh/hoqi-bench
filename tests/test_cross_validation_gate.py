@@ -48,7 +48,7 @@ from pathlib import Path
 import numpy as np
 
 from hoqi_bench._types import FloatArray
-from hoqi_bench.methods import METHOD_REGISTRY
+from hoqi_bench.methods import METHOD_REGISTRY, fit_by_name
 from hoqi_bench.methods._ellipse import conic_to_heydemann_params
 from hoqi_bench.methods.fitzgibbon import _fit_ellipse_conic as fitzgibbon_conic
 from hoqi_bench.methods.halir_flusser import _fit_ellipse_conic as halir_flusser_conic
@@ -201,9 +201,8 @@ def _fit_all(
     `raw_atan2`'s one method-specific keyword supplied, the same way
     `scripts/robustness_matrix.py` and Day 20's campaign smoke test do."""
     phases: dict[str, FloatArray] = {}
-    for name, fit_fn in METHOD_REGISTRY.items():
-        kwargs = {"mean_intensity": mean_intensity} if name == "raw_atan2" else {}
-        result = fit_fn(intensity_i, intensity_q, **kwargs)
+    for name in METHOD_REGISTRY:
+        result = fit_by_name(name, intensity_i, intensity_q, mean_intensity=mean_intensity)
         assert not result.failed, f"{name} failed on a gate condition: {result.reason}"
         phases[name] = result.recovered_phase
     return phases
@@ -300,8 +299,7 @@ def test_tier1a_circle_only_methods_provably_cannot_fit_an_ellipse() -> None:
         60, dc_i=1.05, dc_q=0.97, amplitude=0.9, g=1.3, eps=0.15
     )
     for name in _CIRCLE_ONLY_METHODS:
-        kwargs = {"mean_intensity": 1.0} if name == "raw_atan2" else {}
-        result = METHOD_REGISTRY[name](intensity_i, intensity_q, **kwargs)
+        result = fit_by_name(name, intensity_i, intensity_q, mean_intensity=1.0)
         assert not result.failed
         error = _rmse(wrapped_phase_error(phase, result.recovered_phase))
         assert error > 1e-2, (

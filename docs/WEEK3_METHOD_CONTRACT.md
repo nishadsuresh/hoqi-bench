@@ -69,6 +69,72 @@ designed yet, but must accommodate this) -- this document does not itself
 define that dataclass/Protocol, since the actual interface is Day 15's task;
 it fixes the CONTRACT that interface must satisfy.
 
+### 2.1 Binding extension, 2026-07-27 (Week 3 review): `failed` measures SELF-DETECTION, not failure
+
+**The measurement.** Every method was run over all 359 main-campaign
+conditions x 5 seeds (12,565 fits per method), recording both the
+self-reported failure rate and the rate of *gross error while reporting
+success* -- defined as `failed=False` with a wrapped-phase RMSE above
+0.5 rad, i.e. ~8% of a full cycle, an answer no practitioner could use:
+
+| method | `failed=True` | gross error, `failed=False` |
+|---|---|---|
+| raw_atan2 | 0.00% | 0.00% |
+| kasa | 0.00% | 6.80% |
+| heydemann | 24.51% | 0.00% |
+| halir_flusser | 0.56% | 12.59% |
+| fitzgibbon | 0.00% | 13.48% |
+| taubin | 0.00% | 3.06% |
+| koning_wimmer_witkovsky | 15.65% | 1.62% |
+
+**Why this is a contract problem and not just a result.** §2 above, and
+`docs/PREREGISTRATION.md`'s Metrics section, commit to reporting failure
+rate as a first-class metric, separately from error-when-successful,
+precisely so that "a method that fails 40% of the time and is accurate on
+the other 60%" cannot hide behind one average. Taken at face value, the
+left column says **Heydemann is by far the least reliable of the seven and
+Fitzgibbon is flawless**. The right column says the opposite is true:
+Heydemann never once returned an unusable answer, and Fitzgibbon returned
+one 13.5% of the time without saying so.
+
+The difference between the two columns is not reliability. It is whether a
+method's authors built a self-consistency check into it. Heydemann has one
+(its post-correction radius guard, Day 17) because its silent-garbage mode
+was found and closed; Kasa's `lstsq` returns a minimum-norm solution on a
+rank-deficient design without raising, Taubin's and Fitzgibbon's eigen-
+solves return *a* candidate, and none of them has any notion of whether the
+answer is meaningful. Comparing these failure rates across methods compares
+introspection, not performance.
+
+**What was deliberately NOT done.** No method was given a new guard. Adding
+a uniform post-fit validity check to all seven would make the failure rates
+comparable, but at the cost of changing what each method *is* -- Kasa's own
+acceptance bar was port fidelity to an unguarded algorithm (Day 16), and
+`docs/WEEK3-4_PLAN.md` Day 20 explicitly forbids "silently fixing a method
+by altering its algorithm." The asymmetry is real and belongs in the
+results, not hidden by normalising it away.
+
+**Binding requirement on Day 22**, extending §0.4's survivorship-bias fix
+(which anticipated only the mirror-image problem -- methods dropping *out*
+of hard regimes -- and not this one):
+
+1. Every aggregate reports a **gross-error rate** alongside failure rate and
+   error-when-successful. Three numbers per method per condition, not two.
+2. The gross-error threshold is fixed **now, before the campaign runs**, at
+   the 0.5 rad wrapped-phase RMSE used for the table above, with the
+   rationale stated there. It is not to be re-chosen after seeing results.
+3. Any reported failure-rate comparison across methods carries the caption
+   that it measures self-detected failure. A method with no failure mode is
+   reported as having none, not as having a 0% failure rate.
+
+**One result worth naming now, because it is genuinely non-tautological and
+nothing predicted it**: raw atan2 -- the deliberately naive floor every
+other method is supposed to beat -- is the *most reliable* method in the
+benchmark on both columns, 0% and 0%, because it never fits anything and so
+has nothing that can become ill-conditioned. That accuracy and reliability
+separate this cleanly is not something
+`docs/STRUCTURAL_ADVANTAGE_PREDICTIONS.md` anticipated on any axis.
+
 ## 3. Day 21 cross-validation gate
 
 Day 21 is a hard, never-skip gate (per the original build plan): all 7

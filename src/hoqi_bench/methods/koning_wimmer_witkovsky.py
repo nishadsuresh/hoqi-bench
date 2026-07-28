@@ -69,6 +69,26 @@ from hoqi_bench.methods.base import FitResult, failed_result
 
 NAME = "koning_wimmer_witkovsky"
 
+# Validated 2026-07-27 (Week 3 review) rather than left as the arbitrary
+# round number it started as -- and it turned out to be load-bearing on a
+# headline metric, so it is pre-committed here with its evidence.
+#
+# This is the only method whose failure rate depends on a tunable, so
+# "Koning fails 15.65% of the time" is partly a statement about this
+# constant. Measured over a 1/3 sample of the campaign grid x 2 seeds:
+#
+#   cap= 20 -> non_convergent 12.92%, converged-and-usable 82.92%
+#   cap= 50 -> non_convergent  4.17%, converged-and-usable 82.92%
+#   cap=200 -> non_convergent  2.50%, converged-and-usable 82.92%
+#
+# The middle column does not move. Raising the cap converts non-convergence
+# into converged-but-gross-error (0.83% -> 2.50%), never into a usable
+# answer. So the cap is not truncating fits that were about to succeed: at
+# 20 iterations, non-convergence is a *validated proxy* for "this fit is not
+# going to be usable," which is the honest reason to keep it -- a lower
+# reported failure rate bought purely by relabelling bad answers as good
+# ones would be worse than the number it replaced. Every convergent fit on
+# real campaign data uses 2-6 iterations (median 6, min 2).
 _MAX_ITER = 20
 _CONVERGENCE_TOL = 1e-10
 

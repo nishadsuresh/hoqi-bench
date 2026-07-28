@@ -114,6 +114,21 @@ NAME = "heydemann"
 # realistic noise) start at ~0.33. 0.15 sits with real margin on both
 # sides (0.12 vs 0.15 vs 0.33) -- see docs/journal/day17.md for the full
 # calibration data.
+#
+# Re-validated 2026-07-27 (Week 3 review) against the corrected sampling
+# convention, and measured for PRECISION rather than just separation, since
+# this guard is what produces this method's 24.51% campaign-wide failure
+# rate -- the highest of the seven, and a number Week 5 will report. Over
+# all 359 conditions x 5 seeds the guard fired 440 times; re-running the
+# identical fit with the guard removed shows 385 of those (87.5%) would have
+# exceeded 0.5 rad wrapped-phase RMSE, i.e. were correctly rejected. The
+# other 55 discarded a usable fit, at a median 0.33 rad error -- poor, but
+# under the unusable line. The guard is therefore conservative in the right
+# direction and its cost is bounded and known, which is the claim needed to
+# report that 24.51% honestly: this is a method that declines to answer when
+# it cannot, not a method that breaks. See
+# docs/WEEK3_METHOD_CONTRACT.md sec2.1 -- Heydemann is the ONLY one of the
+# seven with a 0.00% silent-gross-error rate, and this guard is why.
 _RADIUS_CONSISTENCY_THRESHOLD = 0.15
 
 

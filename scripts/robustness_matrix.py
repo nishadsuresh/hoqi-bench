@@ -22,7 +22,7 @@ from __future__ import annotations
 import numpy as np
 
 from hoqi_bench._types import FloatArray
-from hoqi_bench.methods import METHOD_REGISTRY
+from hoqi_bench.methods import METHOD_REGISTRY, fit_by_name
 
 # ---- 1. Adversarial input categories, per docs/WEEK3-4_PLAN.md Day 20 ----
 
@@ -73,13 +73,19 @@ ADVERSARIAL_INPUTS = {
 }
 
 
-def classify(method_name: str, fit_fn: object, i: FloatArray, q: FloatArray) -> str:
+def classify(method_name: str, i: FloatArray, q: FloatArray) -> str:
     """Returns "graceful" (succeeded or returned failed=True cleanly),
     or "CRASH" (raised an exception) -- the one outcome
-    docs/WEEK3-4_PLAN.md Day 20 says must never happen."""
+    docs/WEEK3-4_PLAN.md Day 20 says must never happen.
+
+    `mean_intensity=1.0` matches every adversarial input above, all of
+    which are built around a DC bias point of 1.0 -- it is the correct
+    nominal constant for this file's data, not a placeholder. Routed
+    through `fit_by_name` rather than branched on here (Week 3 review,
+    2026-07-27): see that function's docstring for why the branch is not
+    repeated per call site."""
     try:
-        kwargs = {"mean_intensity": 1.0} if method_name == "raw_atan2" else {}
-        result = fit_fn(i, q, **kwargs)  # type: ignore[operator]
+        result = fit_by_name(method_name, i, q, mean_intensity=1.0)
         if result.failed:
             return f"graceful (failed: {result.reason})"
         return "graceful (succeeded)"
@@ -89,11 +95,11 @@ def classify(method_name: str, fit_fn: object, i: FloatArray, q: FloatArray) -> 
 
 def build_matrix() -> dict[str, dict[str, str]]:
     matrix: dict[str, dict[str, str]] = {}
-    for method_name, fit_fn in METHOD_REGISTRY.items():
+    for method_name in METHOD_REGISTRY:
         matrix[method_name] = {}
         for input_name, input_fn in ADVERSARIAL_INPUTS.items():
             i, q = input_fn()
-            matrix[method_name][input_name] = classify(method_name, fit_fn, i, q)
+            matrix[method_name][input_name] = classify(method_name, i, q)
     return matrix
 
 
