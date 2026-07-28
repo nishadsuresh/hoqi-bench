@@ -267,3 +267,55 @@ reasoning v2's own revision history gives for its pre-data fixes.
 
 **What was NOT changed.** No parameter range, no metric definition, no statistical protocol, no
 research question. `arc_fraction` still means exactly what it always meant.
+
+### D2 — 2026-07-28 (Day 23): cyclic-error amplitudes carry a conditioning flag
+
+**What changed.** The Metrics section commits to reporting first- and second-order cyclic-error
+harmonic amplitude. `hoqi_bench.harmonics.cyclic_error` implements this via least-squares
+projection of the wrapped phase residual onto `[cos(kφ), sin(kφ)]` for `k=1,2`, evaluated at the
+*true* phase — not an FFT, and not evaluated at sample index. It now also reports the harmonic
+design matrix's condition number and a boolean `well_conditioned` flag alongside both amplitudes.
+
+**Why least squares and not an FFT.** An FFT assumes the record spans a whole number of periods.
+99 of the main campaign's 359 conditions have `arc_fraction < 1.0`, where that assumption is false
+and the FFT's bins no longer correspond to the harmonics of interest. Measured on a residual with
+injected `A₁ = 0.05`, `A₂ = 0.03`: at `arc_fraction = 0.5` the FFT reports `A₁ = 0.0311` (38%
+wrong) and `A₂ = 0.0074` (75% wrong), while the least-squares projection is exact to 1e-16 at
+every `arc_fraction` tested down to 0.02, noiseless.
+
+**Why the conditioning flag was added.** Algebraic exactness on noiseless data is not the same as
+usability with realistic noise. `cos(φ), sin(φ), cos(2φ), sin(2φ)` become nearly collinear as the
+sampled arc shrinks — a fragment of a cycle cannot distinguish "some first harmonic" from "some
+second harmonic" — so the estimator degrades badly while still returning a confident number, with
+no exception and no warning. Measured over 200 seeds, N=60, residual noise σ=0.005, injected
+`A₁=0.05`/`A₂=0.03`:
+
+| `arc_fraction` | design-matrix `cond` | median A₁ rel. err | median A₂ rel. err |
+|---|---|---|---|
+| 1.0 | 1.00 | 1.3% | 2.1% |
+| 0.5 | 3.50 | 1.4% | 2.7% |
+| 0.35 | 10.25 | 1.6% | 9.2% |
+| 0.25 | 33.4 | 6.1% | 19.4% |
+| 0.15 | 180.9 | 34.1% | 35.4% |
+
+`cond` tracks this degradation monotonically and is a property of the data (`true_phase`
+sampling), not of `arc_fraction` directly — so it is measured and reported, not inferred from the
+axis value. `HARMONIC_CONDITIONING_LIMIT = 10.0` is the largest `cond` at which the harder of the
+two quantities (second-order amplitude) stays under 10% median relative error at the campaign's
+own noise baseline; it corresponds to `arc_fraction ≈ 0.35`.
+
+**This does not remove or replace the preregistered metric.** Both amplitudes are computed and
+reported at every condition, always — `well_conditioned=False` is a reporting flag, matching
+`aggregate.is_rankable`'s existing choice to report a hard condition's numbers while withholding
+its ordering, not a silent drop. Week 5/6 analysis must not aggregate cyclic-error amplitudes
+across conditions, or rank methods by them, without conditioning on this flag.
+
+**A caveat for aggregation, found while writing the Day 24 sweep runner.** `conditioning` depends
+only on the true-phase sampling, so a *failed* fit (all-NaN `recovered_phase`) still reports
+`well_conditioned=True` alongside NaN amplitudes — the phase sampling genuinely was
+well-conditioned even though the fit itself failed. Filtering on `well_conditioned` alone
+therefore does not exclude failed fits; Day 28's analysis must filter on
+`well_conditioned AND NOT failed`.
+
+**What was NOT changed.** No parameter range, no other metric definition, no statistical protocol,
+no research question.
