@@ -1429,6 +1429,13 @@ Commit a lockfile or fully-pinned requirements, and record the resolved versions
 scipy 1.15.3 locally) in the journal. "Reproducible" without a pinned environment is a claim
 about one machine on one day.
 
+**A live instance of this exact gap, found during Day 24, not hypothetical:** `pandas>=2.0` in
+`pyproject.toml` resolved to pandas 2.3.3 on CI's Python 3.10 job and **pandas 3.0.5** — a major
+version — on the 3.11 job, from the *same* commit, the *same* declared constraint. It surfaced
+as a stub-typing mypy failure (fixed in the Day 24 commit), but a loose floor allowing a major
+version jump could just as easily produce a silent *behavioral* difference between the two CI
+jobs that nothing catches. Pin `pandas` to an exact version here, not just the floor.
+
 ---
 
 ## Task 5 (Day 27): Launch the main campaign

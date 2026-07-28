@@ -98,6 +98,30 @@ shipped code path.
   `py.typed` marker itself.
 - Full suite: 168 passed. Ruff and mypy clean.
 
+## A CI failure that previewed Day 26's whole reason for existing
+
+Pushed, and CI's Python 3.11 job failed mypy strict — passing locally under 3.10. The cause:
+`pandas>=2.0` in `pyproject.toml` is loose enough that pip resolves **pandas 3.0.5** on Python
+3.11 (a real major-version jump) while 3.10 still resolves 2.3.3, and pandas 3.0's stubs type
+`.sort_values().reset_index()` as `Any` in a way 2.x's stubs don't — mypy strict's
+`no-any-return` only fires on the 3.11 job.
+
+Couldn't reproduce it directly (no Python 3.11 interpreter available locally, and pandas 3.0.5
+itself requires ≥3.11), so I isolated the *general* failure pattern instead: a two-line repro
+of "a function declared to return `Any`, called from a function declared to return a concrete
+type," confirmed that error under the local mypy, then confirmed that binding the result to an
+explicitly-annotated intermediate variable suppresses it — a structural mypy behavior that
+doesn't depend on which stub version is actually in play. Pushed that fix and let CI's real
+Python 3.11 + pandas 3.0 environment be the actual test, since I couldn't replicate it any other
+way. Green on the second push.
+
+This is exactly the reproducibility gap Day 26 exists to close: two CI jobs building the *same*
+declared dependency (`pandas>=2.0`) into two different major versions is a real, live instance of
+"reproducible across environments" not yet being true. Flagging it here rather than fixing it
+fully now — pinning belongs to Day 26's task, not a side effect of a Day 24 mypy fix — but Day 26
+should pin `pandas` to an exact version (not just `pandas-stubs`, which is already effectively
+pinned via matching the resolved pandas version) as part of its dependency-pinning work.
+
 ## Left uncertain
 
 The `warnings.catch_warnings()` interaction above is worth a documented WSL-quirks entry but
