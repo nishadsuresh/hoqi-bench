@@ -1,0 +1,15 @@
+axis,method_name,breakdown_status,breakdown_value
+amplitude_ratio,fitzgibbon,no_breakdown_in_range,
+amplitude_ratio,halir_flusser,no_breakdown_in_range,
+amplitude_ratio,heydemann,no_breakdown_in_range,
+amplitude_ratio,kasa,found,1.0291219678100683
+amplitude_ratio,koning_wimmer_witkovsky,found,1.4949602801426138
+amplitude_ratio,raw_atan2,broken_at_start,
+amplitude_ratio,taubin,found,1.0291219541268883
+arc_fraction,fitzgibbon,found,0.17082172756244782
+arc_fraction,halir_flusser,found,0.17082257992659738
+arc_fraction,heydemann,no_breakdown_in_range,
+arc_fraction,kasa,broken_at_start,
+arc_fraction,koning_wimmer_witkovsky,found,0.22898548361656723
+arc_fraction,raw_atan2,broken_at_start,
+arc_fraction,taubin,broken_at_start,
