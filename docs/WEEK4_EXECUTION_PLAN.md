@@ -1309,13 +1309,19 @@ The preregistered text, verbatim:
 - Create: `docs/journal/day25.md`
 - Modify: `docs/PREREGISTRATION.md` (record the three ambiguity resolutions as dated clarifications)
 
-**Interfaces:**
+**Interfaces (as actually implemented, after llm-council -- see docs/PREREGISTRATION.md's D3
+deviation and docs/journal/day25.md for the full reasoning; the original draft below of
+`breakdown_threshold -> float | None` was wrong and corrected before implementation, not after):**
 - Produces:
   - `bootstrap_ci(values, *, n_resamples=10_000, confidence=0.95, seed) -> tuple[float, float]`
-  - `breakdown_threshold(parameter_values, mean_errors, tolerance_m) -> float | None`
+  - `BreakdownThreshold` (frozen dataclass: `value: float | None`, `status: str` one of
+    `"found"`, `"broken_at_start"`, `"no_breakdown_in_range"`)
+  - `breakdown_threshold(parameter_values, mean_errors, tolerance_m, *, log_scale=False) -> BreakdownThreshold`
   - `BONFERRONI_FAMILY_SIZE: int` (21)
   - `corrected_alpha(alpha=0.05) -> float`
-  - `pairwise_comparisons(summaries_at_condition) -> list[PairwiseComparison]`
+  - `PairwiseComparison` (frozen dataclass: `method_a`, `method_b`, `mean_difference`, `p_value`, `significant`)
+  - `pairwise_comparisons(errors_by_method: Mapping[str, Sequence[float]]) -> list[PairwiseComparison]`
+    (paired t-test on same-seed-index differences, per the v2 seed-pairing decision)
 
 - [ ] **Step 1: Write the breakdown-threshold test with hand-computed crossings**
 

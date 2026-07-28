@@ -317,5 +317,82 @@ well-conditioned even though the fit itself failed. Filtering on `well_condition
 therefore does not exclude failed fits; Day 28's analysis must filter on
 `well_conditioned AND NOT failed`.
 
+### D3 — 2026-07-28 (Day 25): breakdown-threshold's denominator, interpolation scale, and
+crossing semantics, resolved via `llm-council` before implementation
+
+**What was ambiguous.** The Statistical protocol section's breakdown-threshold definition
+("smallest swept value where mean error ... first exceeds 1% relative RMS error, via linear
+interpolation between grid points") leaves three operational questions unanswered: what "1%
+relative" is relative to; whether "linear interpolation" means linear in the raw parameter even on
+`arc_fraction`'s log-spaced grid; and what "first exceeds" means when a curve isn't monotonic or is
+already above tolerance at the first grid point. Rather than resolve these by individual
+judgment, they were put to a 5-advisor `llm-council` session (Contrarian, First Principles
+Thinker, Expansionist, Outsider, Executor), followed by a full 5-way anonymized peer review —
+matching the adversarial-review discipline this document's own v2 revision history and D1 already
+used for decisions of comparable weight.
+
+**Denominator, resolved: `hoqi_bench.reference_scale.PREREGISTERED_TOLERANCE_M`, identical on
+both axes** (`amplitude_ratio` and `arc_fraction`) — an absolute meters comparison
+(`displacement_rmse_m > PREREGISTERED_TOLERANCE_M`), not a per-condition percentage. All 5
+advisors converged on a fixed physical denominator over the record's own displacement range,
+which would make `arc_fraction`'s own threshold self-referential (the yardstick shrinking along
+with the phenomenon being measured, as `arc_fraction` itself shrinks). One advisor (assigned the
+Contrarian role) correctly caught that the analogy first offered to the council — that this
+mirrors Day 21's choice of an explicit denominator — was imprecise: Day 21's denominator
+(`arc_fraction * 2*pi`) is condition-*dependent*, the literal opposite of a fixed constant's
+condition-*independence*. Peer review resolved this without overturning the majority conclusion:
+the principle Day 21 actually established was **anti-circularity** — the denominator must not be
+a function of the noisy, fitted quantity the metric is scoring — not fixedness per se.
+`arc_fraction * 2*pi` is condition-dependent but not self-referential (a deterministic nominal,
+known before any fit is attempted); `PREREGISTERED_TOLERANCE_M` satisfies the same principle even
+more strongly. Verified before reuse (per the Contrarian's "theater risk" challenge that this
+might be rubber-stamping an existing default): `git log --follow` confirms `reference_scale.py`
+was introduced in Day 22 for displacement-error classification, a different purpose, before any
+breakdown-threshold code existed.
+
+**Interpolation scale, resolved: match each grid's own design — unanimous, zero disagreement
+across all 5 advisors.** Linear interpolation in the raw value for `amplitude_ratio` (linearly
+spaced); linear interpolation in `log(arc_fraction)` for `arc_fraction` (log-spaced, spanning two
+orders of magnitude). `hoqi_bench.statistics.breakdown_threshold`'s `log_scale` parameter is an
+explicit boolean the caller sets per axis, never inferred from grid spacing at runtime.
+
+**Scan direction and crossing semantics, resolved.** Scan proceeds in the order the caller
+supplies `parameter_values`/`mean_errors` — an explicit contract (easiest-to-hardest), not
+inferred from array order or grid direction. First crossing in that order wins; later
+re-crossings are ignored, never averaged. **Two edge cases the original three ambiguities did not
+name, surfaced independently by all 5 peer reviews**: (1) a method already above tolerance at the
+first, easiest grid point (e.g. `raw_atan2`); (2) a method that never crosses tolerance anywhere in
+the swept range — the mirror image of (1), and per `docs/STRUCTURAL_ADVANTAGE_PREDICTIONS.md`
+almost certainly the *more* common case for this benchmark's near-ceiling conic fitters on these
+axes. A `float | None` return type cannot distinguish these two cases from each other or from a
+genuine crossing at the first grid point. Resolved via `hoqi_bench.statistics.BreakdownThreshold`,
+a three-outcome result (`status` one of `"found"`, `"broken_at_start"`, `"no_breakdown_in_range"`,
+with `value` populated only for `"found"`).
+
+**Left as an explicit, unresolved limitation** (escalated by 3 of 5 peer reviews as beyond what
+the council could decide on its own, not silently ignored): no uncertainty quantification on the
+interpolated crossing point itself. The estimate comes from noisy per-condition means on a finite
+grid, and noise near the threshold could shift which grid point registers as "first." Not
+addressed in Day 25's implementation — left for a Week 6 judgment call on whether it belongs in
+this benchmark's scope, per this document's standing rule that a statistical test not
+preregistered is flagged, not silently added.
+
+**A fourth detail, not put to the council because an existing preregistered decision already
+settles it: which test underlies the Bonferroni-corrected pairwise comparison.**
+`docs/experimental_design.md` names "an uncorrected pairwise t-test" as the baseline this project
+corrects, deferring "full detail" to Day 25. The v2 seed-pairing decision above (every method
+evaluated against the identical noise realization at a given `(condition, seed_index)`,
+specifically to remove shared-noise-draw variance from method-vs-method comparisons) resolves it
+without ambiguity: `hoqi_bench.statistics.pairwise_comparisons` uses a **paired** t-test
+(`scipy.stats.ttest_rel`) on same-seed-index differences, since an unpaired test would discard
+exactly the variance reduction the pairing was built to provide. A seed where either method has a
+NaN result (Week 3's fit-failure contract) is excluded from that specific pair's comparison only,
+not from every pair.
+
+**What was NOT changed.** No parameter range, no other metric definition, no other statistical
+protocol, no research question. The breakdown-threshold statistic itself — what it measures and
+which two axes it applies to — is unchanged; only its previously-unstated operational definition
+is now explicit.
+
 **What was NOT changed.** No parameter range, no other metric definition, no statistical protocol,
 no research question.
