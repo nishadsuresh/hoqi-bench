@@ -10,26 +10,35 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "Nishad Suresh" }]
+# Pinned to EXACT versions, not floors, as of Day 26 (docs/WEEK3-4_PLAN.md's
+# reproducibility-hardening day, docs/journal/day26.md). This closes a real
+# gap found on Day 24: `pandas>=2.0` resolved to pandas 2.3.3 on CI's Python
+# 3.10 job and pandas 3.0.5 (a MAJOR version) on the 3.11 job, from the same
+# commit -- proof that a loose floor is not "reproducible," it's "whatever
+# pip resolves today." Every version below was verified (PyPI wheel listing,
+# not assumed) to ship wheels for cp310 AND cp311 across Linux, macOS, and
+# Windows -- the exact three-OS x two-Python matrix this project's CI now
+# runs -- so pinning here cannot silently break one cell of that matrix.
 dependencies = [
-    "numpy>=1.24",
-    "scipy>=1.10",
-    "sympy>=1.12",
-    "matplotlib>=3.7",
-    "pandas>=2.0",
-    "pyarrow>=14.0",
-    "tomli>=2.0; python_version < '3.11'",
+    "numpy==2.2.6",
+    "scipy==1.15.3",
+    "sympy==1.14.0",
+    "matplotlib==3.10.9",
+    "pandas==2.3.3",
+    "pyarrow==25.0.0",
+    "tomli==2.4.1; python_version < '3.11'",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.4",
-    "pytest-cov>=4.1",
-    "ruff>=0.4",
-    "mypy>=1.8",
-    "pandas-stubs>=2.0",
-    "ipykernel>=6.29",
-    "nbclient>=0.10",
-    "nbformat>=5.10",
+    "pytest==9.1.1",
+    "pytest-cov==7.1.0",
+    "ruff==0.16.0",
+    "mypy==2.3.0",
+    "pandas-stubs==2.3.3.260113",
+    "ipykernel==7.3.0",
+    "nbclient==0.11.0",
+    "nbformat==5.10.4",
 ]
 # Tier 2 external cross-validation (docs/WEEK3-4_PLAN.md Day 19, moved up
 # from Day 21 deliberately -- days of debugging headroom instead of hours
