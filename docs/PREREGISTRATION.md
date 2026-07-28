@@ -394,30 +394,47 @@ protocol, no research question. The breakdown-threshold statistic itself — wha
 which two axes it applies to — is unchanged; only its previously-unstated operational definition
 is now explicit.
 
-### D4 — 2026-07-28 (Day 26): cross-platform byte-identical reproducibility is Linux-specific
+### D4 — 2026-07-28 (Day 26): byte-identical reproducibility does not hold on ANY platform across
+separate runs; the project's reproducibility claim is numerical-tolerance, not byte-exact
 
-**What was found.** Day 26 added a CI job running the smoke campaign on a 3-OS x 2-Python-version
-matrix, asserting a single committed SHA-256 hash. Linux matched on both Python versions. macOS
-produced one different hash, identical across its own two Python versions. Windows produced a
-third different hash, likewise identical across its own two Python versions. Each platform is
-internally deterministic — the discrepancy is not flaky — but the three platforms do not agree
-with each other.
+**What was found, in two steps — the first conclusion was wrong and corrected on the next push,
+not silently patched.**
 
-**Why this is not a bug.** A real algorithmic bug would not reproduce byte-for-byte identically
-across two independent Python versions on each of three different operating systems. This is the
-expected signature of genuine floating-point non-portability: transcendental functions
-(`sin`/`cos`/`arctan2`, used throughout `forward_model.py`) and LAPACK routines (the SVD underlying
-`kasa.py`'s `np.linalg.lstsq`) are not required by IEEE 754 to round identically across different
-platforms' math libraries, only within a platform.
+Step 1: Day 26 added a CI job running the smoke campaign on a 3-OS x 2-Python-version matrix,
+asserting a single committed SHA-256 hash. Linux matched on both Python versions; macOS produced
+one different hash (identical across its own two Python versions); Windows a third (same pattern).
+Each platform was internally deterministic — read at the time as "Linux is bit-stable, macOS/
+Windows are not." Presented to Nishi per this document's stop-and-ask trigger; decision was to keep
+Linux's hash as an exact reference and verify macOS/Windows numerically instead.
 
-**Decision (Nishi, 2026-07-28, presented per this document's stop-and-ask trigger for exactly this
-scenario).** Linux's exact hash remains the source of truth — it is the environment Day 27's actual
-125,650-run main campaign executes in. macOS and Windows are instead verified NUMERICALLY against
-the same reference values, within a tolerance (`rtol=1e-9`, `atol=1e-15`) chosen to be far looser
-than machine epsilon (so ordinary ULP-level platform noise passes) while remaining many orders of
-magnitude tighter than any real regression this project's own bugs have produced (D1's arc-sampling
-defect was ~1e-2 relative). See `tests/test_reproducibility.py` for the two-tier implementation.
+Step 2, on the very next push (no functional code change, only the test file): Linux ITSELF
+produced a THIRD hash, different from its own Step-1 run, in a fully isolated pytest process on
+nominally the same `ubuntu-latest` runner label. This falsifies the Step-1 premise directly:
+GitHub Actions' `ubuntu-latest` maps to a heterogeneous fleet of actual machines, and numpy's
+vectorized transcendental functions (`sin`/`cos`/`arctan2` in `forward_model.py`) and LAPACK
+routines (the SVD underlying `kasa.py`'s `np.linalg.lstsq`) can dispatch different underlying CPU
+instructions (e.g. AVX2 vs AVX-512) depending on which physical machine a run lands on — producing
+different low-order bits even under "the same OS label across separate invocations," not only
+across different OSes. No platform has actually been shown to hold a byte-exact guarantee.
+
+**Why this is not a bug, on either step.** A real algorithmic bug would not reproduce byte-for-byte
+identically within a platform across most of its own runs while differing only in low-order bits
+from a different platform or a different invocation of the same platform. IEEE 754 does not
+require transcendental functions or LAPACK routines to round identically across different
+hardware, only within a single execution.
+
+**Corrected decision (Nishi, 2026-07-28, re-presented with the falsified premise stated plainly).**
+Drop the exact-hash claim entirely, on every platform. The project's reproducibility claim is now
+explicitly: **numerically reproducible to within a documented floating-point tolerance
+(`rtol=1e-9`, `atol=1e-15`), on Linux, macOS, and Windows** — not byte-exact anywhere, since that
+stronger claim was tested directly and shown false even on the single platform (Linux) it was
+first believed to hold on. The tolerance itself passed on every platform tested, every time,
+including both of Linux's two different hashes — the underlying numbers agree to far better than
+noise-floor precision; only the exact byte layout differs. See `tests/test_reproducibility.py`.
 
 **What was NOT changed.** No parameter range, no metric definition, no statistical protocol, no
-research question, and no change to how the actual main campaign runs — this affects only how
-cross-platform CI verification is scored, not the campaign itself.
+research question, and no change to how the actual main campaign runs — this affects only what
+this project claims about cross-invocation byte-reproducibility, not the campaign's own numerical
+output or Day 24's internal-consistency guarantees (`tests/test_runner.py`'s determinism tests
+remain valid: two runs in the SAME process, on the SAME hardware, are still asserted byte-identical
+— only the cross-invocation, cross-machine claim was corrected).

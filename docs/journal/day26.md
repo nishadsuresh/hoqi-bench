@@ -80,11 +80,36 @@ calibrated against a real cross-platform failure" — if the next CI run still f
 Windows, that's new information about the actual magnitude of the discrepancy, not a signal to
 keep widening the number until it goes green.
 
-## Verified before committing the reference hash
+## Verified before committing the reference hash — and then falsified by the very next push
 
 Ran the smoke campaign three times locally (Linux, Python 3.10, pinned deps) and confirmed the
 hash was identical across all three runs before writing it down as `EXPECTED_SMOKE_CAMPAIGN_HASH`.
 Also checked what metadata pyarrow actually embeds in the Parquet files (`pyarrow.parquet.
 read_metadata`) — only a `created_by` string and pinned pandas/pyarrow version numbers, no
-hostname or timestamp, which is what makes a byte-identical cross-platform match plausible rather
-than something metadata noise would sink regardless of real determinism.
+hostname or timestamp, which is what makes a byte-identical match plausible rather than something
+metadata noise alone would sink regardless of real determinism.
+
+That verification was real, but it was only ever one Linux machine — mine. The very next push
+(no functional change, only the test file) showed Linux itself producing a *third* hash, different
+from its own first CI run, on a fully isolated pytest process. GitHub's `ubuntu-latest` is not one
+machine; it's a label over a heterogeneous fleet, and numpy's vectorized transcendental functions
+and LAPACK routines can dispatch different CPU instructions depending on which physical machine a
+given run lands on — producing different low-order bits even under "the same OS" across separate
+invocations, not only across genuinely different OSes.
+
+This directly falsified the premise I'd presented in the first version of this decision ("Linux is
+bit-stable, only macOS/Windows aren't"). Re-presented to Nishi with the corrected picture rather
+than quietly patching around it — the honest fix wasn't "give Linux a slightly better tolerance
+too," it was recognizing that *no platform* had actually earned a byte-exact claim, on any of the
+evidence gathered so far. Decision: drop the exact-hash test entirely. One universal numeric-
+tolerance check, applied identically everywhere, is both simpler and a more honest statement of
+what this project can actually promise. Full reasoning recorded as D4's corrected text in
+`docs/PREREGISTRATION.md` — the first (wrong) conclusion is kept in that document's history rather
+than erased, since seeing a real conclusion get corrected by the next piece of evidence is itself
+useful evidence of the process working, not something to hide.
+
+Confirmed the tolerance check passes on both of Linux's two different hashes, on macOS, and on
+Windows — the underlying numbers agree comfortably; only the exact bytes differ. `tests/
+test_runner.py`'s own determinism tests (two runs in the same process) remain untouched and still
+valid — same-process, same-hardware byte-identity is a different, still-true claim from
+cross-invocation, cross-machine byte-identity, which is the claim that turned out to be false.

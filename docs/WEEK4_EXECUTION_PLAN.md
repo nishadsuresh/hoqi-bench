@@ -1416,17 +1416,25 @@ class of defect where the repo only works because of state in the developer's wo
 an uncommitted file, a stale `.egg-info`, a locally-installed package that is not in
 `pyproject.toml`.
 
-- [ ] **Step 3: Add the cross-platform determinism assertion**
+- [x] **Step 3: Add the cross-platform determinism assertion — completed, with a real correction
+  along the way (see docs/journal/day26.md and docs/PREREGISTRATION.md's D4)**
 
-Commit the smoke campaign's expected SHA-256 to the repo, and have every OS job assert its own
-run matches. **This is the one that might genuinely fail**, because BLAS implementations differ
-across platforms and floating-point summation order is not guaranteed identical.
+Committed the smoke campaign's expected SHA-256, asserted on every OS job. **This did genuinely
+fail** — macOS and Windows each produced their own internally-consistent but different hash from
+Linux. Escalated per the stop-and-ask trigger below; Nishi's first decision was to keep Linux's
+hash as an exact reference and check macOS/Windows numerically. The very next push showed Linux
+ITSELF producing a third hash on a different underlying `ubuntu-latest` machine, falsifying that
+premise. Re-escalated with the corrected picture; final decision was to drop the exact-hash claim
+entirely and use one numeric-tolerance check (`rtol=1e-9`, `atol=1e-15`) uniformly on all three
+platforms — an honest claim ("reproducible to floating-point tolerance, everywhere") rather than a
+false stronger one ("byte-exact on Linux").
 
-**Stop-and-ask trigger, per `docs/WEEK3-4_PLAN.md` Day 26:** if cross-OS hashes differ and the
-cause is BLAS-level, **stop and present the options to Nishi** — pin a BLAS, relax to
-tolerance-based comparison, or document the platform dependence as a finding. Do not silently
-choose. This is one of the few places in Week 4 where §0.2's "do not stop until solved" yields
-to an explicit escalation, because the resolution is a claim about what the benchmark promises,
+**Stop-and-ask trigger, per `docs/WEEK3-4_PLAN.md` Day 26 — exercised twice, not once:** if
+cross-OS hashes differ and the cause is BLAS-level, **stop and present the options to Nishi** —
+pin a BLAS, relax to tolerance-based comparison, or document the platform dependence as a finding.
+Do not silently choose. This is one of the few places in Week 4 where §0.2's "do not stop until
+solved" yields to an explicit escalation, because the resolution is a claim about what the
+benchmark promises,
 not a bug.
 
 - [ ] **Step 4: Pin dependencies and record the resolved environment**
