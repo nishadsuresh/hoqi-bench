@@ -135,6 +135,45 @@ has nothing that can become ill-conditioned. That accuracy and reliability
 separate this cleanly is not something
 `docs/STRUCTURAL_ADVANTAGE_PREDICTIONS.md` anticipated on any axis.
 
+### 2.2 Implemented 2026-07-27 (Day 22), with the two thresholds pre-committed
+
+`src/hoqi_bench/aggregate.py` implements §2.1 and §0.4 together. Both
+thresholds are fixed here and in that module, before Day 24's runner
+exists and before any campaign result exists:
+
+- `GROSS_ERROR_PHASE_RAD = 0.5` -- as justified in §2.1. Defined once, in
+  `aggregate.py`, and imported by `tests/test_failure_contract.py` rather
+  than restated there; it was briefly written in both places, which is the
+  same stale-hand-copied-number defect the Weeks 1-2 audit caught as
+  findings F7/F8.
+- `MAX_UNUSABLE_RATE_FOR_RANKING = 0.20` -- the §0.4 gate. Chosen on an
+  external principle rather than from the observed distribution, which
+  matters because the campaign-wide rates in §2.1's table were already
+  measured by the time this was written and a threshold picked afterwards
+  could not be shown to be innocent of them. Above roughly 20% attrition, a
+  complete-case analysis is conventionally treated as at serious risk of
+  bias regardless of mechanism, because the survivors are a strongly
+  selected subsample. That convention is the anchor, not any particular
+  method's rate here.
+
+**§0.4's gate is deliberately STRENGTHENED, recorded as a dated deviation
+from that section's own wording.** §0.4 says "no method is ranked on any
+condition where any method's FAILURE RATE exceeds a threshold." Applied
+literally, a method with no failure mode at all self-reports 0% forever and
+can never trigger the gate, however much unusable output it produces --
+which is the exact hole §2.1 found, and which would have left Fitzgibbon
+(0.00% failures, 13.48% gross errors) ranked everywhere. The implemented
+gate therefore keys on `unusable_rate` (failure + gross error), so a method
+that is silently wrong is excluded on the same terms as one that says so.
+
+The gate is also **all-or-nothing per condition**: if any method exceeds
+the threshold, no method is ranked at that condition. Dropping only the
+offending method and ranking the rest would leave exactly the
+flattering-by-attrition artifact §0.4 exists to prevent, on the remaining
+pairs. A non-rankable condition is still fully reported -- with its
+reliability rates, which on a hard condition are frequently the most
+informative thing about it -- it simply contributes no ordering.
+
 ## 3. Day 21 cross-validation gate
 
 Day 21 is a hard, never-skip gate (per the original build plan): all 7

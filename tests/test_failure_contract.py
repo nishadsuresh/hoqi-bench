@@ -35,6 +35,7 @@ from pathlib import Path
 import numpy as np
 
 from hoqi_bench._types import FloatArray
+from hoqi_bench.aggregate import GROSS_ERROR_PHASE_RAD
 from hoqi_bench.config import load_sweep_config
 from hoqi_bench.methods import METHOD_REGISTRY, fit_by_name
 from hoqi_bench.metrics import wrapped_phase_error
@@ -43,12 +44,13 @@ from hoqi_bench.simulate import simulate_condition
 
 MAIN_CAMPAIGN_CONFIG = Path(__file__).parent.parent / "configs" / "main_campaign.toml"
 
-# Fixed in `docs/WEEK3_METHOD_CONTRACT.md` §2.1 BEFORE the campaign runs,
-# and not to be re-chosen after seeing results: a wrapped-phase RMSE above
-# 0.5 rad is ~8% of a full cycle (~25 nm of a 316 nm HeNe half-wavelength
-# range) -- an answer no practitioner could act on, whatever the method
-# reports about itself.
-GROSS_ERROR_RAD = 0.5
+# Imported from `aggregate.py` rather than restated, so this test and the
+# production aggregation can never disagree about what "gross error" means
+# -- the threshold was briefly defined in both places, which is exactly the
+# stale-hand-copied-number defect finding F7/F8 caught in the Weeks 1-2
+# audit. Fixed in `docs/WEEK3_METHOD_CONTRACT.md` §2.1 before the campaign
+# runs, and not to be re-chosen after seeing results.
+GROSS_ERROR_RAD = GROSS_ERROR_PHASE_RAD
 
 _N_SEEDS = 3
 
