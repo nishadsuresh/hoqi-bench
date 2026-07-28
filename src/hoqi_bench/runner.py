@@ -176,7 +176,20 @@ def run_condition(
     frame["n_iter"] = frame["n_iter"].astype("Int64")
     # Design decision 3: sort before writing, so worker scheduling cannot
     # reach the bytes on disk.
-    return frame.sort_values(["method_name", "seed_index"]).reset_index(drop=True)
+    #
+    # The explicit annotation on `sorted_frame` (rather than returning the
+    # chained expression directly) is load-bearing, not stylistic: CI's
+    # Python 3.11 job resolves `pandas>=2.0` to pandas 3.0.5 (a major-
+    # version jump from 3.10's 2.3.3), whose stubs type the
+    # `sort_values().reset_index()` chain as `Any` in a way 2.x's stubs do
+    # not -- caught by mypy strict's `no-any-return` only on 3.11, not
+    # locally under 3.10. Binding the fully-chained result to a
+    # `pd.DataFrame`-annotated variable before returning is correct under
+    # both stub versions.
+    sorted_frame: pd.DataFrame = frame.sort_values(["method_name", "seed_index"]).reset_index(
+        drop=True
+    )
+    return sorted_frame
 
 
 def _run_and_write(args: tuple[ResolvedCondition, list[str], int, Path]) -> str:
