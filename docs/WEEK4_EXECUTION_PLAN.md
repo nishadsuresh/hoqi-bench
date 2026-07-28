@@ -1472,7 +1472,16 @@ is broken.
 
 Build a small script that plots error vs. swept value per method for each axis, and **look at
 it**. The specific things to check, each of which has a known correct answer:
-- `raw_atan2` is the worst method on every classic axis. If not, something is wired wrong.
+- `raw_atan2` is the worst method on every classic axis **among usable fits** — filter to
+  `not failed and not gross_error` (per `aggregate.is_gross_error`) before comparing means.
+  **Correction found during Day 24 (not in the original plan): a naive `groupby(...).mean()`
+  over the raw table, with no filtering, does NOT show this** — it showed Heydemann and Köning
+  ranked best and Fitzgibbon near the bottom, exactly backwards. That is R1
+  (`docs/WEEK3_REVIEW.md`) reproduced at full campaign scale: Heydemann self-reports failure
+  24.5% of the time and excludes those attempts from its own mean, while Fitzgibbon self-reports
+  0% failure while silently returning gross errors 13.5% of the time that get averaged in as if
+  real. Once filtered to usable rows only, `raw_atan2` and `kasa` correctly sink to the bottom.
+  Use `aggregate.summarize`/`is_rankable`, never a bare `groupby(...).mean()` on the raw table.
 - `heydemann`, `halir_flusser`, `fitzgibbon`, `koning` are near-ceiling on the classic axes.
   This is the tautology (`STRUCTURAL_ADVANTAGE_PREDICTIONS.md` §0.1) — seeing it is a
   correctness check, not a finding.
