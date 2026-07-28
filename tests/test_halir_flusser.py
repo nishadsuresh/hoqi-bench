@@ -169,10 +169,17 @@ def test_survives_day3_degenerate_regimes() -> None:
 def test_recovers_known_distortion_via_full_fit() -> None:
     """End-to-end sanity check through the real fit() (not just the conic
     stage): on a real campaign-shaped distorted signal, recovered params
-    should be close to the true amplitude_ratio/quadrature_error_rad --
-    same axis and same expected residual bias documented in Day 17's
-    Heydemann journal entry (this method shares the identical post-fit
-    conversion, so the same build_arc_ramp endpoint=True bias applies)."""
+    should be close to the true amplitude_ratio/quadrature_error_rad.
+
+    Bound tightened 2026-07-27 (Day 21). It was 2%, inherited from Day 17's
+    Heydemann entry on the reasoning that this method shares the identical
+    post-fit conversion and therefore the same `build_arc_ramp`
+    `endpoint=True` bias. That reasoning was wrong in a way worth recording:
+    the endpoint artifact was specific to Heydemann's MOMENT estimator (it
+    shifted `mean(I)`), and a conic fit never computes a channel mean, so
+    this method was never subject to it -- measured at 0.008% relative
+    error on `eps` here, 250x inside the bound it was given. Corrected to
+    0.1%, which is what this method can actually do."""
     from pathlib import Path
 
     from hoqi_bench.config import load_sweep_config
@@ -191,4 +198,4 @@ def test_recovers_known_distortion_via_full_fit() -> None:
     rel_error_eps = abs(
         result.params["quadrature_error_rad"] - resolved["quadrature_error_rad"]
     ) / resolved["quadrature_error_rad"]
-    assert rel_error_eps < 0.02, f"eps recovery: {rel_error_eps:.4f} relative error"
+    assert rel_error_eps < 0.001, f"eps recovery: {rel_error_eps:.6f} relative error"

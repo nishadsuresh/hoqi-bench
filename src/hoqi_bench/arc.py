@@ -62,6 +62,47 @@ def build_arc_ramp(
     `phi = 4*pi*x/wavelength_m` for `x`, given a target total phase
     excursion `arc_fraction*2*pi`.
 
+    Design decision -- `endpoint=False`, CHANGED 2026-07-27 (Day 21's
+    cross-validation gate), recorded as a dated deviation in
+    `docs/PREREGISTRATION.md` and `docs/WEEK3_METHOD_CONTRACT.md`:
+    the `n_points` samples sit at the LEFT edge of `n_points` equal
+    sub-intervals of a phase window of length exactly `arc_fraction*2*pi`,
+    i.e. at `k * arc_fraction*2*pi/n_points` for `k = 0 .. n_points-1`.
+    The window covered is still exactly `arc_fraction*2*pi`; the final
+    sample sits one step short of its far edge.
+
+    This function originally used `np.linspace(0, 1, n_points)`
+    (`endpoint=True`), which at `arc_fraction=1.0` samples phase `0` and
+    phase `2*pi` -- THE SAME PHYSICAL POINT -- so one sample in every
+    full-circle record was a duplicate. Day 17 found and quantified that
+    (`docs/journal/day17.md`, "Bias 1") but deliberately left it, on the
+    grounds that changing a load-bearing function to smooth over a bias
+    only one estimator was sensitive to was the riskier move. Day 21's gate
+    overturned that call with evidence Day 17 did not have:
+
+    - The duplicate makes `mean(I) = I0 + A/n_points` instead of `I0`
+      (verified exactly: `A=0.9`, `N=60` gives `1.015`), so Heydemann's
+      moment estimator carried a `~1/N` rad phase bias on the
+      NOISELESS, UNDISTORTED condition -- measured 3.8e-2 rad RMSE at
+      N=20, 1.3e-2 at N=60, 3.9e-3 at N=200, 7.9e-4 at N=1000, against
+      1.1e-7 for the other six methods.
+    - `arc_fraction=1.0` is the campaign BASELINE, so this applied to
+      every condition on every axis except the arc sweep -- not to one
+      corner case.
+    - The `1/N` scaling lands directly on the preregistered
+      `samples_per_fit` axis (RQ6), where it would have produced a clean,
+      entirely artifactual "Heydemann's error falls as 1/N" curve, five
+      orders of magnitude above every other method, indistinguishable by
+      inspection from a real finding about moment-estimator sample
+      efficiency.
+
+    All six other methods are unaffected either way (verified: identical
+    to ~1e-15 under both conventions), so this is not a change that
+    flatters one method -- it removes an artifact that penalised one.
+    `endpoint=False` is also the standard periodic-sampling convention: a
+    record of `N` samples covering exactly one cycle contains each phase
+    exactly once.
+
     Failure mode: `arc_fraction <= 0` produces a zero or negative total
     displacement excursion, which is degenerate (no phase coverage at all,
     or a direction reversal) -- not guarded here since docs/experimental_design.md's
@@ -73,7 +114,7 @@ def build_arc_ramp(
     total_phase_rad = arc_fraction * 2 * np.pi
     total_displacement_m = total_phase_rad * wavelength_m / (4 * np.pi)
 
-    t = np.linspace(0.0, 1.0, n_points)
+    t = np.linspace(0.0, 1.0, n_points, endpoint=False)
     x_true = total_displacement_m * t
 
     return t, x_true

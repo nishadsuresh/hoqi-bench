@@ -22,9 +22,19 @@ from hoqi_bench.forward_model import HENE_WAVELENGTH_M, simulate_ideal_interfero
 
 def _measured_phase_span(arc_fraction: float, n_points: int = 2000) -> float:
     """Generates the (I, Q) trajectory for a given arc_fraction and measures
-    its actual phase span via unwrap(atan2(...)) -- an INDEPENDENT
+    the phase WINDOW it covers, via unwrap(atan2(...)) -- an INDEPENDENT
     measurement of the property build_arc_ramp claims to produce, not a
-    restatement of its own formula."""
+    restatement of its own formula.
+
+    "Window covered" rather than "last sample minus first sample", updated
+    2026-07-27 with `build_arc_ramp`'s `endpoint=False` change (Day 21 --
+    see that function's own docstring for why the duplicated full-circle
+    sample had to go): the N samples now sit at the left edge of N equal
+    sub-intervals, so the window they cover is the first-to-last distance
+    PLUS one more sample step. Every assertion below is unchanged and still
+    exact -- `arc_fraction` still means exactly what it always meant, and
+    the covered window is still exactly `arc_fraction * 2*pi`.
+    """
     t, x_true = build_arc_ramp(arc_fraction, n_points)
 
     def displacement_fn(t_: AnyFloatArray) -> AnyFloatArray:
@@ -34,7 +44,9 @@ def _measured_phase_span(arc_fraction: float, n_points: int = 2000) -> float:
         t, displacement_fn, mean_intensity=1.0, contrast=0.9
     )
     phase = np.unwrap(np.arctan2(intensity_q - 1.0, intensity_i - 1.0))
-    return float(phase[-1] - phase[0])
+    first_to_last = float(phase[-1] - phase[0])
+    sample_step = first_to_last / (n_points - 1)
+    return first_to_last + sample_step
 
 
 def test_full_circle_spans_exactly_2pi() -> None:
@@ -80,7 +92,10 @@ def test_custom_wavelength_still_produces_the_requested_arc_fraction() -> None:
     (meters) -- confirms the wavelength inversion in build_arc_ramp is
     exact, not an approximation that happens to work at the HeNe default."""
     custom_wavelength = 1550e-9  # a telecom-band wavelength, not the HeNe default
-    t, x_true = build_arc_ramp(arc_fraction=0.4, n_points=2000, wavelength_m=custom_wavelength)
+    n_points = 2000
+    t, x_true = build_arc_ramp(
+        arc_fraction=0.4, n_points=n_points, wavelength_m=custom_wavelength
+    )
 
     def displacement_fn(t_: AnyFloatArray) -> AnyFloatArray:
         return x_true
@@ -89,8 +104,9 @@ def test_custom_wavelength_still_produces_the_requested_arc_fraction() -> None:
         t, displacement_fn, wavelength_m=custom_wavelength, mean_intensity=1.0, contrast=0.9
     )
     phase = np.unwrap(np.arctan2(intensity_q - 1.0, intensity_i - 1.0))
-    span = float(phase[-1] - phase[0])
-    assert abs(span - 0.4 * 2 * np.pi) < 1e-6
+    first_to_last = float(phase[-1] - phase[0])
+    covered_window = first_to_last + first_to_last / (n_points - 1)
+    assert abs(covered_window - 0.4 * 2 * np.pi) < 1e-6
 
 
 def test_default_wavelength_matches_forward_model_constant() -> None:

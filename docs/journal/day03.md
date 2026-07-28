@@ -104,3 +104,45 @@ ill-conditioning when the data's linear part is close to rank-deficient (confirm
 precision, in the most extreme regime tested here) — a failure mode the original 1998 paper doesn't
 discuss. Neither method should be documented as unconditionally safer than the other; which one is
 more fragile depends on which specific numerical mechanism the data happens to stress.
+
+---
+
+## Addendum, 2026-07-27 (Day 21) — Finding 1 above does not reproduce
+
+Day 21's cross-validation gate re-ran both findings above against the real method
+implementations (`src/hoqi_bench/methods/fitzgibbon.py`, `halir_flusser.py`) rather than this
+script's own copies. **Finding 2 is robustly confirmed. Finding 1 is not, and is retracted as
+stated.**
+
+What was checked, and what came back:
+
+| check | Day 3 claimed | measured 2026-07-27 |
+|---|---|---|
+| `near_degenerate_15deg`, float64 | FB 0% / H&F 60% | FB 0% / H&F 60% — **confirmed** |
+| Day 3's own `demonstrate_clean_divergence` case (float32, `semi_minor=0.001`, seed 0) | FB "ambiguous", H&F "ok" | **both `ok`** |
+| same regime, 200 seeds, float32 | (not measured) | FB-only fails 8%, H&F-only fails 37% |
+| same regime, 200 seeds, float64 | (not measured) | FB-only fails 7%, H&F-only fails 42% |
+
+Two things follow. First, **reducing precision to float32 does essentially nothing here** — the
+failure rates barely move, and the ordering never inverts. The mechanism Finding 1 attributes the
+divergence to (single-precision hardware of the kind Halir & Flusser's own 1998 benchmarking used)
+is not what is driving it. Second, Finding 1 was **a single-seed observation reported as a general
+result**: running the same script today prints `ok` for both methods on the very case the finding
+was drawn from.
+
+This is not a regression. `git log -p --follow scripts/explore_ellipse_constraints.py` shows the
+script's numerics unchanged since its Day 3 commit — every later commit is a cosmetic refactor
+(dataclass conversion, line wrapping). Whatever produced the original "ambiguous" output was either
+a pre-selection-rule-fix run or a parameterisation that was never committed.
+
+**What survives, and is what Day 19/21 actually rely on:** Fitzgibbon's singular-`C` ambiguity is
+real and is reachable at double precision — 12% of 200 seeds at `semi_minor=0.001`, all of them the
+AMBIGUOUS mode, confirming the fragility `fitzgibbon.py` deliberately preserves is genuinely
+present and unpatched. What is *not* supportable is the claim that Halir & Flusser succeeds where
+Fitzgibbon fails: in every regime measured, H&F fails 3-5x more often. The closing line of this
+entry — "neither method should be documented as unconditionally safer than the other" — turns out
+to have been the durable part.
+
+Recorded as an addendum rather than an edit, per this project's never-delete convention.
+`docs/WEEK3_METHOD_CONTRACT.md` §3.2 carries the corresponding correction to the gate criterion,
+which had inherited Finding 1's direction.

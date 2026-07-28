@@ -87,3 +87,39 @@ comparison.
 Halir & Flusser — the numerically stable block-decomposition ellipse fit, and the first
 method whose failure modes (Day 3's own finding) are worth preserving deliberately rather
 than guarding away.
+
+---
+
+## Addendum, 2026-07-27 (Day 21) — Bias 1 is now fixed; this entry's judgment call was overturned
+
+"Bias 1" above ends with a decision not to touch `build_arc_ramp`, on the grounds that it is
+load-bearing for already-locked Weeks 1-2 results and that changing it would be smoothing over a
+bias only one estimator is sensitive to. **Day 21's gate overturned that call, with evidence this
+entry did not have.** The reasoning is worth keeping visible, because the decision was defensible
+on what was known at the time and wrong on what was knowable later.
+
+What Day 21 added:
+
+- The bias is `~1/N` radians, and it shows up on the **noiseless, undistorted** condition: 3.8e-2
+  rad RMSE at N=20, 1.3e-2 at N=60, 3.9e-3 at N=200, 7.9e-4 at N=1000 — against 1.1e-7 rad for
+  the other six methods at every N. On the easiest condition the benchmark can express, Heydemann
+  was the worst of the seven by five orders of magnitude.
+- `arc_fraction = 1.0` is the **campaign baseline**, so this applied to essentially every condition
+  in the campaign, not to one axis.
+- The `1/N` shape lands directly on the preregistered `samples_per_fit` axis (RQ6), where it would
+  have produced a clean, monotone, wholly artifactual "Heydemann's error falls as 1/N" curve —
+  indistinguishable by inspection from a real finding about moment-estimator sample efficiency, in
+  a chart whose stated purpose is practitioner guidance.
+
+The mechanism was confirmed exactly, not inferred: the duplicated sample makes
+`mean(I) = I₀ + A/N`, and at `A=0.9, N=60` the method reports `dc_offset_i = 1.015` — `1.0 + 0.015`
+on the nose.
+
+`arc.build_arc_ramp` now samples with `endpoint=False`. All six other methods are bit-comparable to
+~1e-15 under either convention, so this removes a penalty rather than granting an advantage. Full
+record: `docs/PREREGISTRATION.md` deviation **D1**, and `arc.py`'s own docstring.
+
+**Bias 2 (the Poisson clamp interaction) is unaffected and is now the whole of the residual** at
+`amplitude_ratio=1.3`: re-measured at 2.6% in recovered `g`, down from the ~4% that had the two
+biases entangled, and confirmed against an unclamped analytic reconstruction of the identical
+condition where the same estimator returns `g = 1.3000000000000005`.

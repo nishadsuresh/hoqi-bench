@@ -150,6 +150,43 @@ When Day 28's RQ1/RQ2 analysis reports results:
 
 ## Deviation record
 
-None yet. Any later change to a prediction above (e.g., upon discovering a method's actual
-implementation differs from the algorithm family described in its `notes/*.md` file) must be
-recorded here, dated, with the reason -- matching `docs/PREREGISTRATION.md`'s own discipline.
+Any later change to a prediction above (e.g., upon discovering a method's actual implementation
+differs from the algorithm family described in its `notes/*.md` file) must be recorded here, dated,
+with the reason -- matching `docs/PREREGISTRATION.md`'s own discipline.
+
+### D1 -- 2026-07-27 (Day 21): Taubin is a CIRCLE fit, and belongs with Kasa on the classic axes
+
+**What this document says above, and what is wrong with it.** The classic-axes section opens "All
+four general-conic/ellipse fitters -- **Heydemann**, **Halir & Flusser**, **Fitzgibbon**,
+**Taubin**" and places all four in **Category 1 (tautological)**, predicting near-ceiling accuracy
+across the full swept range of `amplitude_ratio`, `quadrature_error_rad` and `dc_offset`, with
+Kasa named as "the one partial exception among the correction-capable methods."
+
+`src/hoqi_bench/methods/taubin.py` fits a **3-parameter circle**, not a 5-parameter ellipse -- as
+its own module docstring states explicitly ("Why this is a CIRCLE fit, not an ellipse fit, like
+Kasa"), following `docs/WEEK3_METHOD_CONTRACT.md` §3.3's framing of the Kasa<->Taubin relationship
+as a bias correction on the same linear system. Taubin's bias correction operates on Kasa's model;
+it does not add eccentricity or tilt parameters. So Taubin has **no free parameter for
+`amplitude_ratio` or `quadrature_error_rad` either**, exactly like Kasa.
+
+**Falsified, not merely noticed.** Day 21's Tier 1a test measures this directly: on noiselessly,
+exactly generated ellipse data (`g=1.3`, `eps=0.15`), the four true conic fitters recover phase to
+<1e-13 rad, while Taubin recovers it to **0.136 rad RMS** -- indistinguishable from Kasa's 0.136 and
+raw atan2's 0.143. Taubin is on the wrong side of the line this document draws.
+
+**Corrected predictions**, replacing the classic-axes text above for Taubin only:
+
+- On `amplitude_ratio` and `quadrature_error_rad`: Taubin is **Category 2, not Category 1**. It
+  should track raw atan2 and Kasa, not the conic fitters. A Week 4 result showing Taubin near
+  ceiling on these two axes would be a genuine anomaly worth investigating, not a construction
+  check.
+- On `dc_offset`: unchanged in substance -- Taubin corrects a circle's center, so it should
+  outperform raw atan2 here, alongside Kasa.
+- The `noise_std` and `arc_fraction`/`samples_per_fit` sections are unaffected: both already treat
+  Taubin correctly as a member of the Kasa/circle-fit family.
+
+**Why this had to be caught before Week 4.** This document's own binding Day 28 reporting rule
+captions any Category 1 result as a construction check rather than a finding. Under the uncorrected
+text, Taubin's (large, real, informative) error on the two classic distortion axes would have been
+reported as tautologically expected near-ceiling accuracy -- a caption directly contradicted by the
+numbers underneath it.

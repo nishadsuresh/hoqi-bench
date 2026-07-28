@@ -58,23 +58,40 @@ an assumed cause).
 **A second, smaller, genuinely interesting residual bias, found while
 writing this method's own test suite** (not a bug in either component
 involved): at `amplitude_ratio=1.3` (a real, preregistered value), Q dips
-negative for ~17% of a 60-sample record even before any noise (the same
+negative for ~15% of a 60-sample record even before any noise (the same
 deterministic effect `simulate.py`/`noise.py` document from the P1
 investigation). `noise.poisson_noise`'s physically-motivated negative-
-intensity clamp then forces exactly those samples to `0.0`. Because this
-estimator reads `Var(I')`/`Var(Q')` directly off the sample values,
-clamping ~17% of samples measurably shifts the variance ratio -- a real,
-deterministic (not seed-dependent) ~4% bias in the recovered `g` at this
-specific condition, confirmed by comparing against the pre-Poisson-noise
-signal directly (1.6% from `build_arc_ramp`'s `endpoint=True` convention
-alone, the remaining ~2.6% specifically from the clamp). `atan2`-based
-methods (raw atan2, Kasa) are far less sensitive to this, since they
-compute an angle from whatever value they're given rather than an
-aggregate statistic over the whole record. Not fixed here -- neither the
-clamp (P1, `noise.py`) nor this estimator is wrong; this is a real
-second-order interaction between two independently-correct design
-decisions, and `tests/test_heydemann.py` tests the ACTUAL achievable
-accuracy at this condition rather than an idealized one.
+intensity clamp then forces exactly those samples to `0.0` (measured
+directly: 9 of 60 samples are exactly `0.0` at this condition). Because
+this estimator reads `Var(I')`/`Var(Q')` directly off the sample values,
+clamping those samples measurably shifts the variance ratio -- a real,
+deterministic (not seed-dependent) **2.6%** bias in the recovered `g` at
+this specific condition. `atan2`-based methods (raw atan2, Kasa) are far
+less sensitive to this, since they compute an angle from whatever value
+they're given rather than an aggregate statistic over the whole record.
+Not fixed here -- neither the clamp (P1, `noise.py`) nor this estimator is
+wrong; this is a real second-order interaction between two
+independently-correct design decisions, and `tests/test_heydemann.py`
+tests the ACTUAL achievable accuracy at this condition rather than an
+idealized one.
+
+**Superseded, 2026-07-27 (Day 21's cross-validation gate).** An earlier
+version of this docstring reported the bias above as `~4%`, split as
+"1.6% from `build_arc_ramp`'s `endpoint=True` convention alone, the
+remaining ~2.6% specifically from the clamp", and Day 17 deliberately
+declined to fix the `endpoint=True` half. Day 21's Tier 1b test overturned
+that call with evidence Day 17 did not have -- the duplicated full-circle
+sample gave this method (and only this method) a `~1/N` rad phase bias on
+the *noiseless, undistorted* condition, which would have landed as a
+spurious sample-efficiency curve on the preregistered `samples_per_fit`
+axis. `arc.build_arc_ramp` now samples with `endpoint=False` (see its own
+docstring for the full root cause and the measured numbers), so that half
+of the bias is gone: this estimator now recovers `(I0, Q0, g, eps)` to
+machine precision on exactly-generated data at every `N` tested
+(`tests/test_cross_validation_gate.py`), and the clamp interaction above
+is the *whole* of the remaining residual, verified by re-measuring the
+same condition against an unclamped analytic reconstruction (`g` recovered
+as `1.3000000000000005` there, vs `1.334` through the real pipeline).
 
 Pipeline position: `methods/__init__.py`'s registry entry `"heydemann"`.
 """

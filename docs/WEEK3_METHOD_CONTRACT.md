@@ -86,6 +86,37 @@ each other and of ground truth. Any method failing this on the easiest
 possible condition is a bug in that method's implementation, not a finding
 about the method itself, and must be fixed before Day 22 proceeds.
 
+**Clarification and observation, 2026-07-27 (Day 21), recorded rather than
+silently resolved at implementation time:**
+
+1. *The denominator was never specified.* "Within tolerance = 0.01 (the
+   preregistered 1% relative RMS error threshold)" does not say what the
+   error is relative to, and leaving that open until after seeing results
+   is precisely how a gate gets rationalised into passing. Fixed at
+   implementation: **the record's full-scale phase excursion**
+   (`arc_fraction * 2π`). This is the more conservative of the two readings
+   considered -- dividing by the signal's RMS instead would be ~1.7x more
+   permissive.
+2. *No condition in `configs/main_campaign.toml` is actually clean.* The
+   baseline carries `amplitude_ratio=1.1`, `quadrature_error_rad=0.1` and
+   `dc_offset=0.02`, so each OFAT axis zeroes at most one of the three. The
+   §3.1 condition is therefore constructed explicitly in the gate test,
+   from the campaign baseline with the three classic distortions set to
+   their identity values. `photon_scale` has no true "off" value
+   (`noise.poisson_noise`'s own docstring), so the campaign's `1e7`
+   "negligible" placeholder is used.
+3. *This criterion passed, but is ~750x too loose to be the load-bearing
+   check.* All 7 methods came in under 0.01 relative on the clean
+   condition -- including Heydemann at the point where Tier 1b showed it
+   carrying a real 1.3e-2 rad artifact (0.2% of full scale, comfortably
+   inside 1%). The defect was caught by the analytic oracle instead, which
+   is exactly the ranking `docs/WEEK3-4_PLAN.md` §0.3 argued for and §0.2's
+   "internal agreement is near-worthless as evidence" predicted. **The
+   tolerance is deliberately NOT tightened here** -- changing a
+   pre-committed criterion after seeing results is forking-paths in either
+   direction. It is recorded as too loose, and Tier 1's machine-precision
+   check is treated as the real gate.
+
 ### 3.2 Fitzgibbon <-> Halir & Flusser equivalence (a positive test, not just a risk)
 
 Halir & Flusser's method is a numerically stable REFORMULATION of
@@ -111,6 +142,46 @@ ill-conditioned regime reproducing Day 3's qualitative ordering (a bug if
 Fitzgibbon does NOT show elevated failure/error relative to Halir & Flusser
 there, since that would mean Day 3's finding doesn't generalize from the
 exploratory script to the real method implementations).
+
+**Deviation, 2026-07-27 (Day 21) -- the gate criterion above states Day 3's
+ordering BACKWARDS, and is corrected here rather than quietly aligned to
+whatever the implementations happen to do.** The parenthetical demands that
+"Fitzgibbon show elevated failure/error relative to Halir & Flusser" in the
+ill-conditioned regime. `docs/journal/day03.md` measured the opposite, and
+says so at length under its own heading "Finding 2 -- an honest, unplanned
+result that complicates the story": at `near_degenerate_15deg`,
+**Fitzgibbon failed 0% and Halir & Flusser failed 60%**, because the block
+decomposition must invert `S3` (cond ~1.2e8 there), a failure mode the 1998
+paper does not analyse. This section was written 2026-07-26 from the
+textbook expectation -- that the "stable" reformulation is the safer one --
+which is exactly the error Day 3's own journal warned against in its
+closing line ("Neither method should be documented as unconditionally safer
+than the other"). Corrected criterion, asserted in
+`tests/test_cross_validation_gate.py`:
+
+- Halir & Flusser's failure rate at `near_degenerate_15deg` must reproduce
+  Day 3's ~60%, and must EXCEED Fitzgibbon's there.
+- Fitzgibbon's own singular-`C` ambiguity must nonetheless still be
+  reachable and unpatched -- checked at the thinner (`semi_minor=0.001`)
+  ellipse from Day 3's own `demonstrate_clean_divergence`, where it is:
+  measured 12% Fitzgibbon failures over 200 seeds (all of them the
+  AMBIGUOUS mode) against 42% for Halir & Flusser. This is what protects
+  Day 19's scientific point -- if a future change added a tie-break rule or
+  relaxed the `a^T*C*a > 0` tolerance, `fitzgibbon.py`'s "deliberately not
+  patched" docstring would silently become false with nothing failing.
+
+**A second, separate correction to Day 3's own record, from the same
+check.** Day 3's "Finding 1" claims that at float32 precision Fitzgibbon
+genuinely fails while Halir & Flusser succeeds cleanly. **This does not
+reproduce.** Re-running Day 3's own script today prints `ok` for both
+methods on its own demo case, and the script's numerics are unchanged since
+its Day 3 commit (verified with `git log -p`; only cosmetic refactors
+since). Over 200 seeds at that regime: Fitzgibbon-only failures 8% at
+float32 vs 7% at float64, Halir & Flusser-only failures 37% vs 42% --
+reducing precision to float32 makes essentially no difference, and the
+ordering never inverts. Finding 1 was a single-seed observation reported as
+a general result. Recorded as a dated addendum in `docs/journal/day03.md`
+rather than edited out. Finding 2 is unaffected and is robustly confirmed.
 
 ### 3.3 Kasa <-> Taubin relationship
 

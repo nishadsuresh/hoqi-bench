@@ -10,10 +10,17 @@ All tolerances below are DERIVED from direct numerical investigation
 (see heydemann.py's own module docstring for the full account), not
 guessed -- a first draft of the amplitude_ratio=1.3 test assumed
 near-machine-precision recovery and was wrong; the real, understood cause
-(build_arc_ramp's endpoint=True convention plus noise.poisson_noise's
-negative-intensity clamp interacting with this variance-based estimator)
-is documented and tested for directly, not hidden behind a loosened
-tolerance.
+(noise.poisson_noise's negative-intensity clamp interacting with this
+variance-based estimator) is documented and tested for directly, not
+hidden behind a loosened tolerance.
+
+TIGHTENED 2026-07-27 (Day 21). These tolerances previously also absorbed a
+second bias, from `build_arc_ramp`'s `endpoint=True` sampling convention,
+which Day 21's Tier 1b gate traced and `arc.py` then fixed. Every bound
+below has been re-measured against the corrected pipeline and tightened to
+match -- leaving them at their old, looser values would have let a future
+regression of the same defect pass unnoticed, which is the entire failure
+mode a tolerance derived from measurement is supposed to prevent.
 """
 
 from __future__ import annotations
@@ -46,20 +53,14 @@ def _conditions() -> dict[str, object]:
 def test_recovers_known_distortion_at_full_arc() -> None:
     """quadrature_error_rad=0.3 (a real preregistered value, with zero
     negative-intensity samples at this condition -- well away from
-    amplitude_ratio's clamp interaction) at full arc coverage: g/eps
-    should be recovered to within 2%, not the near-machine-precision an
-    idealized (infinite-sample, endpoint-symmetric) synthetic check
-    suggests. The residual ~1.6% is real and understood: build_arc_ramp
-    uses np.linspace(..., endpoint=True), so phi=0 and phi=2*pi coincide
-    at one duplicated sample out of samples_per_fit=60 -- a small,
-    deterministic bias in any moment-based (variance/covariance) estimator
-    reading from it, verified directly by comparing against an
-    endpoint=False synthetic reconstruction (heydemann.py's own module
-    docstring). Not fixed in build_arc_ramp itself: that function is
-    deeply embedded in already-validated Weeks 1-2 results (Day 7's
-    "31 fringes, 0.000000% error" check, the v2 samples_per_fit design
-    table) and changing it now risks silently invalidating locked prior
-    findings to smooth over a bias only THIS estimator is sensitive to."""
+    amplitude_ratio's clamp interaction) at full arc coverage.
+
+    Bounds re-measured 2026-07-27 after Day 21 fixed `build_arc_ramp`'s
+    duplicated full-circle sample: `g` is now recovered to 0.009% and `eps`
+    to 0.032% (was ~1.6% for both), and this method now beats raw atan2 by
+    725x rather than 15x at this condition. 0.2% and a 100x-beat bound keep
+    a full order of magnitude of margin over the measured values while
+    being ~10x tighter than what the endpoint artifact used to force."""
     conditions = _conditions()
     resolved = conditions["axis:quadrature_error_rad=0.3"].resolved  # type: ignore[attr-defined]
     signal = simulate_condition(resolved, "axis:quadrature_error_rad=0.3", seed_index=0)
@@ -74,8 +75,8 @@ def test_recovers_known_distortion_at_full_arc() -> None:
     rel_error_eps = abs(
         result.params["quadrature_error_rad"] - resolved["quadrature_error_rad"]
     ) / resolved["quadrature_error_rad"]
-    assert rel_error_g < 0.02, f"g recovery: {rel_error_g:.4f} relative error"
-    assert rel_error_eps < 0.02, f"eps recovery: {rel_error_eps:.4f} relative error"
+    assert rel_error_g < 0.002, f"g recovery: {rel_error_g:.5f} relative error"
+    assert rel_error_eps < 0.002, f"eps recovery: {rel_error_eps:.5f} relative error"
 
     heydemann_rmse = _rmse(wrapped_phase_error(signal.true_phase, result.recovered_phase))
     atan2_rmse = _rmse(
@@ -86,20 +87,26 @@ def test_recovers_known_distortion_at_full_arc() -> None:
             ).recovered_phase,
         )
     )
-    # Measured ratio ~0.066 (15x) at this condition, not the 100x a first
-    # guess assumed -- the residual ~1.6% endpoint=True bias above still
-    # applies to Heydemann's own phase output, not just its reported g/eps.
-    assert heydemann_rmse < 0.1 * atan2_rmse, f"h/a ratio={heydemann_rmse / atan2_rmse:.4f}"
+    # Measured ratio 0.00138 (725x) after Day 21's arc.py fix; it was 0.066
+    # (15x) while the duplicated full-circle sample was still biasing this
+    # estimator's own phase output, not just its reported g/eps.
+    assert heydemann_rmse < 0.01 * atan2_rmse, f"h/a ratio={heydemann_rmse / atan2_rmse:.5f}"
 
 
 def test_recovers_known_distortion_at_extreme_amplitude_ratio() -> None:
     """amplitude_ratio=1.3 is a real swept value chosen specifically to
     probe breakdown (docs/experimental_design.md). At this condition, Q
-    dips negative for ~17% of the record even before noise, and
+    dips negative for ~15% of the record even before noise, and
     noise.poisson_noise's negative-intensity clamp interacts with this
-    variance-based estimator to produce a real, understood ~4% bias in
+    variance-based estimator to produce a real, understood 2.6% bias in
     recovered g (see heydemann.py's module docstring for the full,
-    numerically-verified account) -- tested for directly here, not hidden."""
+    numerically-verified account) -- tested for directly here, not hidden.
+
+    This is now the ONLY residual bias at this condition: re-measured
+    2026-07-27 after Day 21's arc.py fix removed the endpoint artifact
+    that used to contribute the other ~1.6%, and confirmed against an
+    unclamped analytic reconstruction of the identical condition, where
+    the same estimator recovers g as 1.3000000000000005."""
     conditions = _conditions()
     resolved = conditions["axis:amplitude_ratio=1.3"].resolved  # type: ignore[attr-defined]
     signal = simulate_condition(resolved, "axis:amplitude_ratio=1.3", seed_index=0)
@@ -111,10 +118,11 @@ def test_recovers_known_distortion_at_extreme_amplitude_ratio() -> None:
     rel_error_g = abs(result.params["amplitude_ratio"] - resolved["amplitude_ratio"]) / resolved[
         "amplitude_ratio"
     ]
-    # Grounded at ~4.24% (verified directly against this exact condition,
-    # seed-independent since the dominant cause -- the clamp -- is
-    # deterministic); 6% gives real margin without hiding the real effect.
-    assert rel_error_g < 0.06, f"g recovery: {rel_error_g:.4f} relative error"
+    # Grounded at 2.64% (verified directly against this exact condition,
+    # seed-independent since the cause -- the clamp -- is deterministic);
+    # 4% gives real margin without hiding the real effect. Was 6%, against
+    # a measured 4.24%, while the endpoint artifact was also contributing.
+    assert rel_error_g < 0.04, f"g recovery: {rel_error_g:.4f} relative error"
 
 
 def test_degenerate_small_arc_fraction_fails_gracefully() -> None:
@@ -151,11 +159,13 @@ def test_dramatically_outperforms_atan2_and_kasa_on_classic_axes() -> None:
     Heydemann's actual structural advantage, which is clearest on the two
     axes Kasa has literally zero free parameters for.
 
-    Threshold 0.15, not the rounder 0.1 first tried: this specific
-    condition includes amplitude_ratio=1.3, so the same real, understood
-    ~4% clamp-interaction bias from the extreme-amplitude_ratio test above
-    applies here too, measured directly at ratio~0.112 -- 0.15 keeps real
-    margin without hiding that known effect."""
+    Threshold 0.10, re-measured 2026-07-27 after Day 21's arc.py fix: this
+    specific condition includes amplitude_ratio=1.3, so the real,
+    understood 2.6% clamp-interaction bias from the extreme-amplitude_ratio
+    test above still applies here, measured directly at ratio 0.0752 (it
+    was 0.112 with the endpoint artifact also present, which is why the
+    threshold used to be 0.15). 0.10 keeps real margin without hiding that
+    known effect."""
     conditions = _conditions()
     name = "grid:amplitude_x_quadrature:amplitude_ratio=1.3,quadrature_error_rad=0.3"
     resolved = conditions[name].resolved  # type: ignore[attr-defined]
@@ -176,5 +186,5 @@ def test_dramatically_outperforms_atan2_and_kasa_on_classic_axes() -> None:
         )
     )
 
-    assert heydemann_rmse < 0.15 * kasa_rmse, f"h/k ratio={heydemann_rmse / kasa_rmse:.4f}"
-    assert heydemann_rmse < 0.15 * atan2_rmse, f"h/a ratio={heydemann_rmse / atan2_rmse:.4f}"
+    assert heydemann_rmse < 0.10 * kasa_rmse, f"h/k ratio={heydemann_rmse / kasa_rmse:.4f}"
+    assert heydemann_rmse < 0.10 * atan2_rmse, f"h/a ratio={heydemann_rmse / atan2_rmse:.4f}"

@@ -219,3 +219,51 @@ fixes.
 Any change to the parameter ranges, metrics, or statistical protocol after this point must be
 recorded as an explicit, dated deviation in this document (not silently edited in), with the reason
 stated — exactly as both the v1 and v2 revision histories above were themselves handled.
+
+## Deviations recorded after the v2 external timestamp
+
+### D1 — 2026-07-27 (Day 21): arc sampling convention changed to `endpoint=False`
+
+**What changed.** `arc.build_arc_ramp` previously placed its `samples_per_fit` samples via
+`np.linspace(0, 1, n)`, i.e. inclusive of both endpoints. It now uses `endpoint=False`: the samples
+sit at the left edge of `n` equal sub-intervals of a phase window of length exactly
+`arc_fraction * 2π`. The window covered is unchanged; the final sample now sits one sampling step
+short of its far edge instead of on it.
+
+**Why.** Day 21's cross-validation gate (`tests/test_cross_validation_gate.py`, Tier 1b) was
+designed to ask whether the exactness the analytic oracle proves for each method survives the
+project's own simulation path. It did not. At `arc_fraction = 1.0` the inclusive convention samples
+phase `0` and phase `2π` — the same physical point — so one sample in every full-circle record was a
+duplicate. That makes `mean(I) = I₀ + A/N` rather than `I₀`, which biases the Heydemann method's
+second-order-moment estimator, and only that method, by `~1/N` radians. Measured on the
+**noiseless, undistorted** condition: 3.8e-2 rad RMSE at N=20, 1.3e-2 at N=60, 3.9e-3 at N=200,
+7.9e-4 at N=1000 — against 1.1e-7 rad for the other six methods at every N.
+
+**Why this rose to the level of changing a preregistered mechanism.** Three things, none of which
+were known when Day 17 first found the bias and deliberately left it (`docs/journal/day17.md`,
+"Bias 1"):
+
+1. `arc_fraction = 1.0` is the **campaign baseline**, so this applied to every condition on every
+   OFAT axis and every interaction grid except the arc sweep itself — not to one corner case.
+2. The `1/N` scaling lands squarely on the preregistered `samples_per_fit` axis (**RQ6**), where it
+   would have produced a clean, monotone, entirely artifactual "Heydemann's error falls as 1/N"
+   curve, five orders of magnitude above every other method, indistinguishable on inspection from a
+   real finding about moment-estimator sample efficiency. RQ6's whole purpose is a practitioner-
+   facing "for noise σ, use N points to reach accuracy ε" chart; publishing a sampling artifact into
+   that chart is a worse outcome than changing the convention.
+3. The three preregistered *classic* axes would have shown Heydemann — the method
+   `docs/STRUCTURAL_ADVANTAGE_PREDICTIONS.md` classifies as tautologically guaranteed to win there —
+   as roughly twelve orders of magnitude *worse* than the other conic fitters at the low-noise end.
+   That is a falsification of the project's own structural prediction produced entirely by a
+   `linspace` argument.
+
+**Why this does not flatter any method.** Verified directly: the other six methods' outputs are
+identical to ~1e-15 under both conventions. The change removes an artifact that penalised one
+method; it does not add information to any. `endpoint=False` is also the standard periodic-sampling
+convention — a record of `N` samples covering exactly one cycle contains each phase exactly once.
+
+**Timing.** Made before any campaign data exists, which is the cheapest possible moment and the same
+reasoning v2's own revision history gives for its pre-data fixes.
+
+**What was NOT changed.** No parameter range, no metric definition, no statistical protocol, no
+research question. `arc_fraction` still means exactly what it always meant.
