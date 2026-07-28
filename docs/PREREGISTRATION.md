@@ -394,5 +394,30 @@ protocol, no research question. The breakdown-threshold statistic itself — wha
 which two axes it applies to — is unchanged; only its previously-unstated operational definition
 is now explicit.
 
-**What was NOT changed.** No parameter range, no other metric definition, no statistical protocol,
-no research question.
+### D4 — 2026-07-28 (Day 26): cross-platform byte-identical reproducibility is Linux-specific
+
+**What was found.** Day 26 added a CI job running the smoke campaign on a 3-OS x 2-Python-version
+matrix, asserting a single committed SHA-256 hash. Linux matched on both Python versions. macOS
+produced one different hash, identical across its own two Python versions. Windows produced a
+third different hash, likewise identical across its own two Python versions. Each platform is
+internally deterministic — the discrepancy is not flaky — but the three platforms do not agree
+with each other.
+
+**Why this is not a bug.** A real algorithmic bug would not reproduce byte-for-byte identically
+across two independent Python versions on each of three different operating systems. This is the
+expected signature of genuine floating-point non-portability: transcendental functions
+(`sin`/`cos`/`arctan2`, used throughout `forward_model.py`) and LAPACK routines (the SVD underlying
+`kasa.py`'s `np.linalg.lstsq`) are not required by IEEE 754 to round identically across different
+platforms' math libraries, only within a platform.
+
+**Decision (Nishi, 2026-07-28, presented per this document's stop-and-ask trigger for exactly this
+scenario).** Linux's exact hash remains the source of truth — it is the environment Day 27's actual
+125,650-run main campaign executes in. macOS and Windows are instead verified NUMERICALLY against
+the same reference values, within a tolerance (`rtol=1e-9`, `atol=1e-15`) chosen to be far looser
+than machine epsilon (so ordinary ULP-level platform noise passes) while remaining many orders of
+magnitude tighter than any real regression this project's own bugs have produced (D1's arc-sampling
+defect was ~1e-2 relative). See `tests/test_reproducibility.py` for the two-tier implementation.
+
+**What was NOT changed.** No parameter range, no metric definition, no statistical protocol, no
+research question, and no change to how the actual main campaign runs — this affects only how
+cross-platform CI verification is scored, not the campaign itself.

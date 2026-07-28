@@ -52,17 +52,33 @@ consistency tests can't catch silent drift over time or across platforms; this c
 honestly here rather than manufacturing a redundant step to match the plan's original wording
 literally.
 
-## What this job is actually testing, for the first time, live
+## What actually happened on the first push: a real cross-platform finding, not a hypothetical one
 
-This is the first time this project's numerical output gets checked against Apple's Accelerate
-framework (macOS) and Windows' OpenBLAS build, rather than only Linux's. There is a real,
-non-hypothetical chance the hash doesn't match on one of those platforms even with byte-for-byte
-identical code and pinned dependencies, purely from floating-point summation order differing
-across BLAS implementations. That is not a bug in this codebase if it happens — but per
-`docs/WEEK3-4_PLAN.md` Day 26's own stop-and-ask trigger, if it does happen, the resolution (pin a
-specific BLAS, relax to a tolerance-based comparison, or document the platform dependence as a
-finding) is Nishi's call, not something to resolve unilaterally by loosening the assertion until
-it passes.
+Pushed the single-hash version and it failed exactly where it was designed to be able to fail:
+Linux matched on both Python versions; macOS produced one different hash (identical across its own
+two Python versions); Windows produced a third different hash (likewise identical across its own
+two Python versions). Every platform is internally deterministic — the same OS always reproduces
+its own result — but the three disagree with each other. That's the textbook signature of genuine
+floating-point non-portability (transcendental functions and LAPACK routines aren't required to
+round identically across platforms' math libraries), not a flaky bug: a real bug would not survive
+identically across two independent Python versions on each of three OSes.
+
+This is precisely the scenario `docs/WEEK3-4_PLAN.md` Day 26 names as a stop-and-ask trigger, so it
+went to Nishi rather than getting resolved unilaterally. Decision: keep Linux's exact hash as the
+source of truth (it's the environment the real 125,650-run campaign, Day 27, actually executes in),
+and verify macOS/Windows against the same reference **numerically** instead — `rtol=1e-9,
+atol=1e-15`, loose enough to absorb platform-level floating-point noise, far tighter than any real
+regression this project's own bugs have produced (D1's arc-sampling defect was ~1e-2 relative, five
+orders of magnitude looser). Implemented as two tests in `tests/test_reproducibility.py`: the exact
+hash check now skips on non-Linux platforms; a second, universal test compares every numeric column
+against a committed CSV reference within that tolerance, on all three OSes including Linux (where
+it's a strictly weaker restatement that should never fail if the exact check passes). Recorded as
+D4 in `docs/PREREGISTRATION.md`.
+
+The tolerance is deliberately marked in its own comment as "the first value tried, not yet
+calibrated against a real cross-platform failure" — if the next CI run still fails on macOS or
+Windows, that's new information about the actual magnitude of the discrepancy, not a signal to
+keep widening the number until it goes green.
 
 ## Verified before committing the reference hash
 
