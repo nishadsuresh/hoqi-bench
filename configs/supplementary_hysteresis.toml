@@ -1,0 +1,30 @@
+# Supplementary hysteresis config -- Week 5 Task 4, Day 32.
+# NOT part of the preregistered campaign. Protocol committed BEFORE any
+# code in docs/SUPPLEMENTARY_PROTOCOLS.md Protocol 1, per
+# docs/WEEK5-6_EXECUTION_PLAN.md §0.6.
+#
+# Identical baseline and hysteresis_magnitude grid to
+# configs/main_campaign.toml -- the ONLY thing this experiment changes is
+# the displacement waveform generator (scripts/rq3_hysteresis_bidirectional.py
+# passes waveforms.build_bidirectional_ramp to simulate_condition instead
+# of the default arc.build_arc_ramp), so the two runs are comparable at
+# matched hysteresis_magnitude, method, and seed.
+
+methods = ["raw_atan2", "kasa", "heydemann", "halir_flusser", "fitzgibbon", "taubin", "koning_wimmer_witkovsky"]
+n_seeds = 50
+tolerance = 0.01
+
+[baseline]
+mean_intensity = 1.0
+contrast = 0.9
+amplitude_ratio = 1.1
+quadrature_error_rad = 0.1
+dc_offset = 0.02
+arc_fraction = 1.0
+noise_std = 0.0
+samples_per_fit = 60
+hysteresis_magnitude = 0.0
+photon_scale = 1.0e7
+
+[axes]
+hysteresis_magnitude = [0.0, 0.01, 0.02, 0.05, 0.08, 0.1, 0.15, 0.2]

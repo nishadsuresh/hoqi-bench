@@ -72,17 +72,27 @@ call, rather than each reconstructing this composition independently.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
 
-from hoqi_bench._types import FloatArray
+from hoqi_bench._types import AnyFloatArray, FloatArray
 from hoqi_bench.arc import build_arc_ramp
 from hoqi_bench.forward_model import HENE_WAVELENGTH_M, simulate_ideal_interferometer
 from hoqi_bench.noise import gaussian_noise, poisson_noise
 from hoqi_bench.pipeline import apply_pipeline
 from hoqi_bench.seeds import derive_seed
 from hoqi_bench.transforms import amplitude_imbalance, dc_offset, hysteresis, quadrature_phase_error
+
+# A waveform generator matching arc.build_arc_ramp's own signature:
+# (arc_fraction, n_points, wavelength_m) -> (t, x_true). Used by
+# simulate_condition's waveform_fn parameter (added Week 5 Task 4, Day 32)
+# so a supplementary experiment can substitute a different displacement
+# generator (e.g. waveforms.build_bidirectional_ramp) without duplicating
+# this module's 5-step pipeline composition -- see simulate_condition's
+# own docstring for why the default is unchanged for every existing caller.
+WaveformGenerator = Callable[[float, int, float], tuple[AnyFloatArray, AnyFloatArray]]
 
 
 @dataclass(frozen=True)
@@ -112,6 +122,7 @@ def simulate_condition(
     condition_name: str,
     seed_index: int,
     wavelength_m: float = HENE_WAVELENGTH_M,
+    waveform_fn: WaveformGenerator = build_arc_ramp,
 ) -> SimulatedSignal:
     """Builds the simulated (I, Q) signal for one fully-resolved condition
     (`resolve.ResolvedCondition.resolved` -- already in absolute units, per
@@ -126,6 +137,15 @@ def simulate_condition(
     a method argument): there is no way to call this function without going
     through the canonical seed derivation.
 
+    `waveform_fn` (added Week 5 Task 4, Day 32, default `arc.build_arc_ramp`
+    -- EVERY existing call site's behavior is completely unchanged): lets a
+    supplementary experiment substitute a different displacement generator
+    (`waveforms.build_bidirectional_ramp`, for RQ3's direction-dependence
+    test) without duplicating this function's 5-step pipeline composition
+    in a second file -- exactly the divergence-between-independent-
+    reconstructions risk this module's own docstring exists to prevent.
+    The preregistered main campaign never passes this argument.
+
     Failure mode: propagates whatever `KeyError` a caller's `resolved` dict
     would raise if missing a `REQUIRED_MODEL_PARAMS` entry -- not
     re-validated here, since `resolve.iter_conditions` is this project's
@@ -133,11 +153,12 @@ def simulate_condition(
     completeness.
     """
     # ---- 1. Displacement waveform for this condition's arc coverage.
-    # build_arc_ramp returns AnyFloatArray (arc.py's own signature); cast to
-    # FloatArray here since this signal-data value flows into hysteresis
-    # and SimulatedSignal below, both of which require float64 strictly
-    # (per _types.py's FloatArray/AnyFloatArray distinction) ----
-    t, x_true_any = build_arc_ramp(
+    # waveform_fn returns AnyFloatArray (arc.build_arc_ramp's own
+    # signature); cast to FloatArray here since this signal-data value
+    # flows into hysteresis and SimulatedSignal below, both of which
+    # require float64 strictly (per _types.py's FloatArray/AnyFloatArray
+    # distinction) ----
+    t, x_true_any = waveform_fn(
         resolved["arc_fraction"], int(resolved["samples_per_fit"]), wavelength_m
     )
     x_true: FloatArray = np.asarray(x_true_any, dtype=np.float64)

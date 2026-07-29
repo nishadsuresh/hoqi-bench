@@ -69,12 +69,13 @@ from pathlib import Path  # noqa: E402
 import pandas as pd  # noqa: E402
 
 from hoqi_bench.aggregate import outcome_from_fit  # noqa: E402
+from hoqi_bench.arc import build_arc_ramp  # noqa: E402
 from hoqi_bench.config import SweepConfig  # noqa: E402
 from hoqi_bench.forward_model import HENE_WAVELENGTH_M  # noqa: E402
 from hoqi_bench.harmonics import cyclic_error  # noqa: E402
 from hoqi_bench.methods import timed_fit_by_name  # noqa: E402
 from hoqi_bench.resolve import ResolvedCondition, iter_conditions  # noqa: E402
-from hoqi_bench.simulate import simulate_condition  # noqa: E402
+from hoqi_bench.simulate import WaveformGenerator, simulate_condition  # noqa: E402
 
 # The raw table's schema, in order. Fixed here rather than inferred from a
 # dict so that a column added by mistake fails loudly instead of silently
@@ -117,8 +118,16 @@ def run_condition(
     methods: Sequence[str],
     n_seeds: int,
     wavelength_m: float = HENE_WAVELENGTH_M,
+    waveform_fn: WaveformGenerator = build_arc_ramp,
 ) -> pd.DataFrame:
     """Every `(method, seed)` for one condition, as a sorted frame.
+
+    `waveform_fn` (added Week 5 Task 4, Day 32, default `arc.build_arc_ramp`
+    -- every existing caller's behavior is unchanged): forwarded to
+    `simulate.simulate_condition`, see that parameter's own docstring.
+    Lets a supplementary campaign (e.g. RQ3's bidirectional-waveform
+    experiment) reuse this exact aggregation/metrics loop instead of
+    duplicating it in a second script.
 
     Failure mode: a method that RAISES would abort the whole campaign, so
     this is the layer that must not let one through -- but no guard is
@@ -131,7 +140,9 @@ def run_condition(
     rows = []
     for method_name in methods:
         for seed_index in range(n_seeds):
-            signal = simulate_condition(condition.resolved, condition.name, seed_index)
+            signal = simulate_condition(
+                condition.resolved, condition.name, seed_index, waveform_fn=waveform_fn
+            )
             # timed_fit_by_name, not fit_by_name: populates FitResult.runtime_s
             # (Week 5 Task 3, Day 31 -- docs/WEEK5_PREFLIGHT_AUDIT.md finding
             # P3, previously null in 100% of rows because this call site never

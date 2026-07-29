@@ -36,7 +36,7 @@ import pytest
 
 from hoqi_bench.config import load_sweep_config
 from hoqi_bench.resolve import iter_conditions
-from hoqi_bench.simulate import simulate_condition
+from hoqi_bench.simulate import WaveformGenerator, simulate_condition
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MAIN_CAMPAIGN_CONFIG = REPO_ROOT / "configs" / "main_campaign.toml"
@@ -148,6 +148,41 @@ def test_samples_per_fit_axis_is_a_known_recorded_defect() -> None:
 # ---- 2. Hysteresis direction-of-travel guard ------------------------------
 
 
+SUPPLEMENTARY_HYSTERESIS_CONFIG = REPO_ROOT / "configs" / "supplementary_hysteresis.toml"
+
+
+def _hysteresis_axis_reverses_direction(
+    config_path: Path, waveform_fn: WaveformGenerator | None = None
+) -> bool:
+    """Shared check both the preregistered-config (expected xfail) and
+    supplementary-config (expected pass) tests below use, so the two
+    cannot silently diverge in what they actually check."""
+    config = load_sweep_config(config_path)
+    conditions = {c.name: c for c in iter_conditions(config)}
+    hysteresis_conditions = [
+        c for name, c in conditions.items() if name.startswith("axis:hysteresis_magnitude=")
+    ]
+    assert hysteresis_conditions, f"no hysteresis_magnitude conditions found in {config_path}"
+
+    for condition in hysteresis_conditions:
+        if condition.resolved["hysteresis_magnitude"] <= 0.0:
+            continue  # magnitude=0 is hysteresis's own identity case; no direction to reverse
+        signal = (
+            simulate_condition(condition.resolved, condition.name, 0, waveform_fn=waveform_fn)
+            if waveform_fn is not None
+            else simulate_condition(condition.resolved, condition.name, 0)
+        )
+        direction_signs = set(
+            pd.Series(signal.x_true)
+            .diff()
+            .dropna()
+            .apply(lambda d: 1 if d > 0 else (-1 if d < 0 else 0))
+        )
+        if -1 in direction_signs and 1 in direction_signs:
+            return True
+    return False
+
+
 def test_hysteresis_axis_actually_reverses_direction() -> None:
     """Guards against defect P1: `transforms.hysteresis` derives direction
     of travel from `sign(gradient(true_displacement))`, but every
@@ -158,40 +193,38 @@ def test_hysteresis_axis_actually_reverses_direction() -> None:
 
     Marked `xfail` against the preregistered config -- this is a KNOWN,
     DATED, RECORDED defect (D5), not an oversight to silently patch here.
-    It is expected to start passing once Task 4's supplementary
-    bidirectional-waveform config exists and this test (or a sibling) is
-    pointed at it.
+    See `test_supplementary_hysteresis_config_actually_reverses_direction`
+    below for the sibling check confirming the FIX exists and works,
+    against Task 4's supplementary bidirectional-waveform config.
     """
-    config = load_sweep_config(MAIN_CAMPAIGN_CONFIG)
-    conditions = {c.name: c for c in iter_conditions(config)}
-    hysteresis_conditions = [
-        c for name, c in conditions.items() if name.startswith("axis:hysteresis_magnitude=")
-    ]
-    assert hysteresis_conditions, "no hysteresis_magnitude conditions found in main campaign config"
-
-    reversed_somewhere = False
-    for condition in hysteresis_conditions:
-        if condition.resolved["hysteresis_magnitude"] <= 0.0:
-            continue  # magnitude=0 is hysteresis's own identity case; no direction to reverse
-        signal = simulate_condition(condition.resolved, condition.name, 0)
-        direction_signs = set(
-            pd.Series(signal.x_true)
-            .diff()
-            .dropna()
-            .apply(lambda d: 1 if d > 0 else (-1 if d < 0 else 0))
-        )
-        if -1 in direction_signs and 1 in direction_signs:
-            reversed_somewhere = True
-            break
-
-    if not reversed_somewhere:
+    if not _hysteresis_axis_reverses_direction(MAIN_CAMPAIGN_CONFIG):
         pytest.xfail(
             "known defect, docs/PREREGISTRATION.md deviation D5: every campaign "
             "waveform is monotonic, so hysteresis direction never reverses -- "
             "the preregistered campaign measures static radial inflation, not "
-            "path-dependent hysteresis. Expected to pass once pointed at a "
-            "bidirectional-waveform config (Week 5 Task 4)."
+            "path-dependent hysteresis. Fixed for the SUPPLEMENTARY experiment "
+            "only, per D5 -- see test_supplementary_hysteresis_config_actually_"
+            "reverses_direction. The preregistered campaign itself is never "
+            "re-run to fix this (that would be exactly the forking-paths move "
+            "docs/WEEK5-6_EXECUTION_PLAN.md §0.6 exists to prevent)."
         )
+
+
+def test_supplementary_hysteresis_config_actually_reverses_direction() -> None:
+    """The other half of P1's fix (Week 5 Task 4, Day 32): confirms
+    `waveforms.build_bidirectional_ramp`, used by
+    `configs/supplementary_hysteresis.toml` via
+    `scripts/rq3_hysteresis_bidirectional.py`, actually produces direction
+    reversal where the preregistered campaign's monotonic waveform does
+    not. This is expected to PASS, unlike the sibling test above --
+    if it starts failing, the supplementary experiment has stopped
+    testing what it claims to test.
+    """
+    from hoqi_bench.waveforms import build_bidirectional_ramp
+
+    assert _hysteresis_axis_reverses_direction(
+        SUPPLEMENTARY_HYSTERESIS_CONFIG, waveform_fn=build_bidirectional_ramp
+    )
 
 
 # ---- 3. Preregistered-metric population guard -----------------------------
