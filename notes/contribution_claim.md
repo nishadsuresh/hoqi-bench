@@ -39,20 +39,46 @@ deliverable — a `pip`-installable, typed, tested, CI-backed package plus a ver
 benchmark dataset plus one-command reproduction — is the kind of artifact this specific literature
 does not currently have, regardless of whether any single method in it is new.
 
-**(b) Extension to nonlinearity classes the classic fitting literature predates.** Lehmann et al.
-2025's power-law residual scaling and direction-dependent hysteresis findings post-date every
-classic ellipse-fitting method compared here by years to decades — none of those methods were
-designed with these nonlinearity classes in mind, and (per the related-work search) no existing
-comparison tests whether they hold up against them. `hoqi-bench`'s RQ3 asks this directly and
-answers it with real numbers (Days 30-31), whatever the answer turns out to be.
+**(b) Extension to nonlinearity classes the classic fitting literature predates — weaker than
+originally framed, updated here to match what actually happened (Day 38, 2026-07-29), not the
+Week 1 version of this claim.** Lehmann et al. 2025's power-law residual scaling and
+direction-dependent hysteresis findings post-date every classic ellipse-fitting method compared
+here by years to decades — none of those methods were designed with these nonlinearity classes in
+mind, and (per the related-work search) no existing comparison tests whether they hold up against
+them. `hoqi-bench`'s RQ3 asks this directly. What actually happened, run against real results:
+
+- **Power-law**: characterized on this project's own campaign data (`docs/RQ3_RQ6_ANALYSIS.md`).
+  Only 7 of 28 (axis, method) fits clear a pre-committed honesty floor, and where a clean
+  relationship does exist, its exponent lands near 1 — **not** Lehmann's reported ~3. This is a
+  genuine, reportable result (not every clean relationship needs to match a prior paper's number to
+  be worth reporting), but it is a null-to-mixed result, not a confirmation.
+- **Direction-dependent hysteresis**: **the preregistered campaign never actually tested this
+  mechanism.** Every campaign waveform is a monotonic ramp, so `transforms.hysteresis`'s
+  direction-reversal branch is dead code for the entire 125,650-fit main campaign
+  (`docs/PREREGISTRATION.md` deviation D5) — the preregistered `hysteresis_magnitude` axis measures
+  a real but different effect (direction-independent radial inflation). This was found by a Week 5
+  pre-flight audit, not by design. A **supplementary** experiment, built and run after the fact
+  under a protocol committed before any of its code existed (`docs/SUPPLEMENTARY_PROTOCOLS.md`
+  Protocol 1), did find real direction-dependence in several methods — but that result carries the
+  evidentiary weight of one post-hoc supplementary run, not a preregistered campaign result.
+
+**Net effect on this claim**: (b) is real but weaker than the version of this document written
+before Day 15. The project extends to the power-law question with a genuine (if largely null)
+preregistered answer, and to the hysteresis question only via a supplementary experiment the
+preregistered campaign itself failed to actually run. Both facts belong in the same sentence in any
+external write-up — neither should be quietly dropped nor allowed to imply more than it supports.
 
 ## The honest boundary between (a) and (b)
 
 (a) is the safer, unambiguous claim — reproducibility infrastructure is valuable regardless of
-whether any individual finding inside it turns out to be surprising. (b) is where a genuinely new
-empirical result could emerge (or might not — a null result, "the classic methods hold up fine," is
-equally valid and equally worth reporting per this project's own preregistration discipline, Day 6).
-Neither should be overstated relative to the other in the eventual paper's abstract/introduction.
+whether any individual finding inside it turns out to be surprising, and it is strengthened, not
+weakened, by the fact that this project's own preregistration discipline caught the (b) gap above
+before publication rather than after. (b) is where a genuinely new empirical result could emerge —
+and did, partially: a real (if unexpected-shape) power-law null result, and a real supplementary
+finding on hysteresis direction, sitting alongside a real gap in what the preregistered campaign
+actually managed to test. Neither should be overstated relative to the other, and the (b) shortfall
+should not be dressed up as a triumph of the audit process that caught it — catching it accurately
+is the deliverable, not a headline achievement in its own right.
 
 ## Standing limitation (repeated here deliberately, not just in the Limitations section)
 
@@ -61,5 +87,5 @@ before release. The related-work search itself surfaced that even Lehmann et al.
 real-hardware anchor this project extends from — does not appear to have released code or data
 (not fully confirmed; see `notes/related_work_table.md`'s caveats), meaning this project's
 simulation-based extension cannot currently be cross-validated against that paper's own raw data
-even if it wanted to be. This should appear in the abstract itself when written (Day 38), not be
-buried in a limitations section a reader might skip.
+even if it wanted to be. **Confirmed in the abstract as written (`README.md`, Day 37/38, 2026-07-29)
+— present in the abstract's own text, not buried in a limitations section a reader might skip.**
