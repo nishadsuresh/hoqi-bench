@@ -552,3 +552,29 @@ extension, if pursued, is future work under its own preregistration, not a Week 
 
 **What was NOT changed.** No swept value on `arc_fraction` or any other axis. Only the stated scope
 of what RQ5 has been answered over.
+
+## Final status (2026-07-29, Day 42) — which research questions were answered, and where
+
+Written at the close of the 6-week build plan, per this project's own discipline: a preregistration
+is not complete until it states plainly what happened to every question it committed to, not only
+the ones that went cleanly.
+
+| RQ | Status | Where the result lives |
+|---|---|---|
+| RQ1 (comparative ranking) | **Answered from preregistered data.** Classic axes are a construction check (Category 1); the genuine finding is a complete reliability inversion at `arc_fraction=0.02`. | `docs/RQ1_RQ2_ANALYSIS.md` (RQ1a/RQ1b/RQ1c) |
+| RQ2 (breakdown thresholds) | **Answered from preregistered data.** | `docs/RQ1_RQ2_ANALYSIS.md` (RQ2) |
+| RQ3, power-law half | **Answered from preregistered data — a real, largely null result.** Only 7/28 fits clear the honesty floor; no exponent matches Lehmann's ~3. | `docs/RQ3_RQ6_ANALYSIS.md`, `results/rq3_power_law.csv` |
+| RQ3, hysteresis half | **NOT answered by the preregistered campaign (deviation D5).** Every campaign waveform is monotonic. Answered instead by a supplementary experiment, reported with that experiment's own (lower) evidentiary weight. | `docs/RQ3_RQ6_ANALYSIS.md`, `docs/SUPPLEMENTARY_PROTOCOLS.md` Protocol 1, `results/rq3_hysteresis_bidirectional.csv` |
+| RQ4 (Poisson vs. Gaussian) | **Answered from preregistered data (existing axes) plus a novel analysis.** No ranking difference survived proper significance testing under any of three matching definitions. | `docs/RQ3_RQ6_ANALYSIS.md`, `docs/SUPPLEMENTARY_PROTOCOLS.md` Protocol 2, `results/rq4_*.csv` |
+| RQ5 (phase-excursion regime) | **Answered from preregistered data, scope narrowed (deviation D7).** Sub-fringe regime only; the many-fringe half was never in the grid. | `docs/RQ3_RQ6_ANALYSIS.md`, `results/rq5_*.csv` |
+| RQ6 (N-vs-noise design chart) | **NOT answerable from the preregistered grid (deviation D6).** No `samples_per_fit x noise_std` interaction existed. Answered by a supplementary interaction grid. | `docs/RQ3_RQ6_ANALYSIS.md`, `docs/SUPPLEMENTARY_PROTOCOLS.md` Protocol 3, `results/rq6_design_chart.csv` |
+
+**Two of six preregistered research questions (RQ3's hysteresis half, RQ6) could not be answered
+from the campaign this preregistration actually committed to and ran** — found by a dedicated
+Week 5 pre-flight audit (`docs/WEEK5_PREFLIGHT_AUDIT.md`), not by an external reader after
+publication. Both gaps are answered instead by supplementary experiments, each with a protocol
+committed and pushed before any of its code existed (`docs/SUPPLEMENTARY_PROTOCOLS.md`), and each
+reported with the reduced evidentiary weight of a post-hoc run rather than blended into the
+preregistered results. This document's own external OSF timestamp (https://osf.io/qyw6t) predates
+the campaign that revealed both gaps; an amendment recording deviations D5-D7 is a standing action
+item for Nishi, tracked as a precondition for the project's Zenodo DOI.
