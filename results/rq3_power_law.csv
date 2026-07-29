@@ -1,0 +1,29 @@
+axis,method,n_points_used,n_points_excluded_unrankable,exponent,coefficient,r_squared,meets_r_squared_floor,matches_lehmann_exponent,status
+amplitude_ratio,raw_atan2,9,0,0.26869194730154994,7.898328858831321e-09,0.8501261461001307,False,False,no_clean_power_law
+amplitude_ratio,kasa,9,0,0.29562398015245317,8.226835148342086e-09,0.8450197518899473,False,False,no_clean_power_law
+amplitude_ratio,heydemann,9,0,1.6541138144863388,3.2961191800208024e-09,0.789133542968614,False,False,no_clean_power_law
+amplitude_ratio,halir_flusser,9,0,1.832775451901486,6.600874160748084e-09,0.8110768641134918,False,False,no_clean_power_law
+amplitude_ratio,fitzgibbon,9,0,1.8327754519014339,6.600874160747802e-09,0.8110768641135436,False,False,no_clean_power_law
+amplitude_ratio,taubin,9,0,0.29481270362014056,8.20777467498214e-09,0.8458334746036454,False,False,no_clean_power_law
+amplitude_ratio,koning_wimmer_witkovsky,9,0,1.8942451788537231,8.077300234806389e-09,0.812470923506617,False,False,no_clean_power_law
+quadrature_error_rad,raw_atan2,9,0,0.6684812504515266,2.130164656076788e-08,0.9474249726904282,True,False,fit
+quadrature_error_rad,kasa,9,0,0.7073971577275271,2.2233032196615496e-08,0.9583092069395499,True,False,fit
+quadrature_error_rad,heydemann,9,0,0.026691048084643912,1.8416104086270136e-11,0.493945469600516,False,False,no_clean_power_law
+quadrature_error_rad,halir_flusser,9,0,0.029969105082136554,1.9602029093864666e-11,0.5897810616493456,False,False,no_clean_power_law
+quadrature_error_rad,fitzgibbon,9,0,0.029969105081578296,1.9602029093845027e-11,0.5897810616352047,False,False,no_clean_power_law
+quadrature_error_rad,taubin,9,0,0.7073971480062157,2.2233032526306494e-08,0.95830920261341,True,False,fit
+quadrature_error_rad,koning_wimmer_witkovsky,9,0,0.02878823807138092,1.9531159956582075e-11,0.596896567466473,False,False,no_clean_power_law
+dc_offset,raw_atan2,7,0,0.3255948590917732,1.3747685991009383e-08,0.8360875214924696,False,False,no_clean_power_law
+dc_offset,kasa,7,0,1.9047221178838468e-05,3.6080109194371435e-09,0.061506981355169854,False,False,no_clean_power_law
+dc_offset,heydemann,7,0,0.027189762608058204,1.8812069703005212e-11,0.7024793349731197,False,False,no_clean_power_law
+dc_offset,halir_flusser,7,0,0.02680994427659214,1.979572314911225e-11,0.6374703073304786,False,False,no_clean_power_law
+dc_offset,fitzgibbon,7,0,0.02680994427686415,1.9795723149132575e-11,0.637470307336243,False,False,no_clean_power_law
+dc_offset,taubin,7,0,1.9047247751579027e-05,3.608011027448292e-09,0.06150518443983166,False,False,no_clean_power_law
+dc_offset,koning_wimmer_witkovsky,7,0,0.02689365404289057,1.9797054749368625e-11,0.6402114458028545,False,False,no_clean_power_law
+radial_inflation (preregistered as hysteresis_magnitude; see D5),raw_atan2,7,0,-1.9171126250427505e-05,3.727682580698227e-09,0.04608181203562989,False,False,no_clean_power_law
+radial_inflation (preregistered as hysteresis_magnitude; see D5),kasa,7,0,0.00015720565069363818,3.610109157134092e-09,0.6755505606443785,False,False,no_clean_power_law
+radial_inflation (preregistered as hysteresis_magnitude; see D5),heydemann,7,0,0.8528634794582638,1.1864226229798098e-09,0.9985308600456182,True,False,fit
+radial_inflation (preregistered as hysteresis_magnitude; see D5),halir_flusser,7,0,0.9189918797932327,2.7224119301886096e-09,0.9998626193837267,True,False,fit
+radial_inflation (preregistered as hysteresis_magnitude; see D5),fitzgibbon,7,0,0.9189918797932002,2.7224119301884256e-09,0.9998626193837272,True,False,fit
+radial_inflation (preregistered as hysteresis_magnitude; see D5),taubin,7,0,0.000152632316764014,3.610045404150932e-09,0.6638226080415515,False,False,no_clean_power_law
+radial_inflation (preregistered as hysteresis_magnitude; see D5),koning_wimmer_witkovsky,7,0,0.9189608232708031,2.714392447597195e-09,0.9998694479076169,True,False,fit
