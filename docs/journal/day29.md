@@ -92,6 +92,27 @@ audit (Task 9), which is the day already scoped to find exactly this shape of ga
 dated deviations, not silent failures). Committed as a single commit containing documentation and
 guards only — no experiment code, no supplementary data collected.
 
+## CI caught a real bug in the guard test itself, same day
+
+Pushed, then watched the actual CI run rather than assuming the local pass generalized: 7 of 8
+matrix jobs green, `lint-type-test (3.11)` failed. Root cause, diagnosed rather than guessed:
+`test_preregistered_results_tree_has_not_been_touched_by_supplementary_runs` asserted
+`results/raw/` must exist as a directory — true on this dev machine, where the main campaign has
+actually been run, but false in a fresh CI checkout, since `*.parquet` is deliberately gitignored
+(`.gitignore`'s own documented convention: large, regenerable raw sweep output is excluded; only
+final figures/tables are committed deliverables). Every other new test in the file reads
+`results/main_campaign_summary.csv`, which *is* committed, so this was the one place the new suite
+assumed local dev state without checking it against what CI actually clones.
+
+Classified as (i), an implementation error in the new test itself, per the plan's own §0.2 rule —
+not a difference in test conditions worth writing up, since the fix is unambiguous: the collision
+check only needs to run when both directories are present, and is vacuously satisfied otherwise.
+Verified the fix under the actual failing condition, not just by reading the diff: moved
+`results/raw/` aside locally, reran the full file (21 passed, 2 xfailed, identical to before), then
+restored all 359 files and confirmed the count. Pushed as a second, small commit — never amending a
+commit already on `origin/main`, per this project's own git discipline — and re-watched CI to a
+genuine all-green completion across all 8 jobs.
+
 ## Escalated to Nishi (not resolved today — outside what code can do)
 
 The OSF registration at https://osf.io/qyw6t needs an amendment recording D5-D7. Per the plan's own
