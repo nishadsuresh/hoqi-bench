@@ -174,6 +174,33 @@ exactly generated ellipse data (`g=1.3`, `eps=0.15`), the four true conic fitter
 <1e-13 rad, while Taubin recovers it to **0.136 rad RMS** -- indistinguishable from Kasa's 0.136 and
 raw atan2's 0.143. Taubin is on the wrong side of the line this document draws.
 
+### D2 -- 2026-07-29 (Day 29): the Category 3 hysteresis prediction describes a phenomenon the
+main campaign never actually injects
+
+**What this document says above, and what is wrong with it.** The Category 3 section names
+`hysteresis_magnitude` as one of the genuinely open axes, on the premise that the campaign injects
+path-dependent (direction-of-travel-dependent) hysteresis. It does not: every campaign waveform
+comes from `arc.build_arc_ramp`, which is strictly monotonic, so `transforms.hysteresis`'s
+direction-dependent branch is never exercised (measured: direction is `+1` at 100% of samples,
+`docs/WEEK5_PREFLIGHT_AUDIT.md` finding P1, `docs/PREREGISTRATION.md` deviation D5). The
+preregistered `hysteresis_magnitude` axis instead measures a direction-INDEPENDENT uniform radial
+inflation.
+
+**Consequence for this document's own binding rule.** The Category 3 framing above -- "no method
+has a structural home-field advantage on these axes... these are the results this benchmark
+actually exists to produce" -- still holds for the corrected phenomenon (no method models a static
+radial offset either), so no result reported under the corrected name requires a different caption.
+But any claim describing the preregistered campaign's `hysteresis_magnitude` result as evidence
+about DIRECTION-DEPENDENT hysteresis specifically would be false; it is evidence about radial-offset
+sensitivity only. A supplementary bidirectional-waveform experiment
+(`docs/WEEK5-6_EXECUTION_PLAN.md` Task 4) is the only source of evidence about actual
+direction-dependence, and its results must be captioned separately from the preregistered campaign's
+throughout.
+
+**What was NOT changed.** The `noise_std`, `arc_fraction`/`samples_per_fit`, and power-law/Poisson
+sections are unaffected. The `hysteresis_magnitude` axis's swept values are unchanged; only what the
+resulting numbers may be claimed to demonstrate is corrected.
+
 **Corrected predictions**, replacing the classic-axes text above for Taubin only:
 
 - On `amplitude_ratio` and `quadrature_error_rad`: Taubin is **Category 2, not Category 1**. It

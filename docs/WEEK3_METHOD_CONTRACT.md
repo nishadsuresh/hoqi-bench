@@ -320,3 +320,21 @@ gate criteria after this point must be recorded as an explicit, dated
 deviation in this document, with the reason stated -- matching
 `docs/PREREGISTRATION.md`'s own "What counts as deviating from this plan"
 discipline.
+
+## Defect report -- 2026-07-29 (Day 29): `runtime_s` was contracted but never populated
+
+**This is a defect report, not a deviation** -- nothing about the wrapping rule, the
+failure-contract fields, or any gate criterion above changed. `docs/PREREGISTRATION.md`'s Metrics
+section commits to "wall-clock time per fit (mean and std across seeds, same hardware)." Measured
+directly: `runtime_s` is null in 100% of the 125,650 raw rows and all 2,513 summary rows
+(`docs/WEEK5_PREFLIGHT_AUDIT.md`, finding P3). Root cause: `methods/base.py`'s `timed_fit()` is
+documented as "the ONE place runtime is measured," but `runner.py` calls `fit_by_name(...)`
+directly and never wraps it -- an implementation gap, not a specification gap. `aggregate.py`
+degraded this silently to `NaN` on an empty runtime list rather than raising, so nothing in the
+pipeline flagged it before this audit.
+
+Fixed in `docs/WEEK5-6_EXECUTION_PLAN.md` Task 3 via a serial, single-worker timing pass (the
+existing parallel `ProcessPoolExecutor` campaign measures scheduler contention as much as algorithm
+cost, and does not honor "same hardware" in any stable sense) over a subset chosen on structural
+grounds before any accuracy result is consulted, to avoid handing the analysis a second free
+parameter. See that task for the full design.

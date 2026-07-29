@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "hoqi-bench: an open, reproducible benchmark for phase-recovery and nonlinearity-correction methods in homodyne quadrature interferometry"
+type: software
+authors:
+  - family-names: Suresh
+    given-names: Nishad
+version: 0.1.0
+date-released: "2026-07-28"
+repository-code: "https://github.com/nishadsuresh/hoqi-bench"
+license: MIT
+# DOI: TODO(Day 41) -- filled in once the Zenodo upload mints the archive's
+# DOI. Cannot be filled before the DOI exists; see
+# docs/WEEK5-6_EXECUTION_PLAN.md Task 14's gate (Zenodo DOIs are immutable,
+# so this field is deliberately left as an explicit placeholder rather than
+# a guessed value).
+# doi: 10.5281/zenodo.TODO

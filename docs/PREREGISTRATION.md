@@ -438,3 +438,117 @@ this project claims about cross-invocation byte-reproducibility, not the campaig
 output or Day 24's internal-consistency guarantees (`tests/test_runner.py`'s determinism tests
 remain valid: two runs in the SAME process, on the SAME hardware, are still asserted byte-identical
 — only the cross-invocation, cross-machine claim was corrected).
+
+### D5 — 2026-07-29 (Day 29): the `hysteresis_magnitude` axis, as executed, measures direction-
+INDEPENDENT radial inflation, not hysteresis; RQ3's hysteresis half is unanswered by this campaign
+
+**What was found.** `transforms.hysteresis` derives direction of travel as
+`sign(gradient(true_displacement))`. Every campaign condition's waveform comes from
+`arc.build_arc_ramp`, which is strictly monotonic by construction (`linspace(..., endpoint=False)`
+over a fixed phase window). Measured directly, on `axis:hysteresis_magnitude=0.2`, seed 0: direction
+is `+1` at **100%** of samples and `-1` at **0%**; the transform's output is **bit-identical** (max
+absolute difference exactly `0.0`) to the same call with an arbitrary monotonic ramp substituted for
+`true_displacement`. Full reproduction in `docs/WEEK5_PREFLIGHT_AUDIT.md`, finding P1.
+
+**What the campaign actually measured instead.** A real, non-conic distortion — a uniform radial
+inflation of magnitude `+h`, applied identically regardless of phase-travel direction. Not a null
+result: 33.9× displacement-RMSE dynamic range for the four general-conic fitters over
+`hysteresis_magnitude ∈ [0, 0.2]`. It is simply not the phenomenon RQ3 names, which is specifically
+about path-*dependence* (different results depending on direction of travel).
+
+**Why this rose to the level of a deviation rather than a silent footnote.** RQ3 is one of five
+original preregistered research questions. Reporting the existing `hysteresis_magnitude` results
+under the name "hysteresis" without this deviation would misrepresent what was measured to any
+reader who did not independently re-derive it.
+
+**Why this was missed until now.** `tests/test_hysteresis.py` validates the transform against a
+sinusoidal (bidirectional) waveform, which correctly exercises both the `+1` and `-1` direction
+branches. The campaign's actual waveform generator (`arc.build_arc_ramp`) is monotonic. The test
+suite has no coverage of the config→run path specifically, and validating a transform against a
+waveform the pipeline never actually generates is the same structural gap the Weeks 1-2 audit's
+council review already named in the abstract, three audits before this one found a concrete
+instance of it.
+
+**Response, per `llm-council` review (`docs/WEEK5-6_EXECUTION_PLAN.md` §0.4, §2.1).** The
+preregistered campaign's `hysteresis_magnitude` results are reported under their correct name —
+static radial-inflation sensitivity — not retroactively reworded to fit a narrower reading of RQ3
+the existing data happens to answer, and the grid itself is not amended or re-run to make it
+"become" hysteresis after the fact (that would be exactly the forking-paths move preregistration
+exists to prevent). RQ3's hysteresis half is declared **unanswered by the preregistered campaign.**
+A supplementary experiment using an actual bidirectional waveform, protocol committed before any
+code per `docs/SUPPLEMENTARY_PROTOCOLS.md`, is the only thing permitted to speak to real
+direction-dependence, and its results are reported separately, never blended into the preregistered
+tables.
+
+**What was NOT changed.** No parameter range, no metric definition, no statistical protocol on any
+OTHER axis. `hysteresis_magnitude`'s swept values are unchanged; only what the resulting numbers may
+be called is corrected.
+
+**Independent verification note.** This deviation is recorded in the repository at commit time; per
+`docs/WEEK5-6_EXECUTION_PLAN.md` §2.7 (peer-review finding), a dated note in a repository the author
+controls carries limited evidentiary weight on its own. An OSF amendment to the
+https://osf.io/qyw6t registration recording D5-D7 is a standing action item for Nishi, tracked as
+blocking before Day 41's Zenodo DOI.
+
+### D6 — 2026-07-29 (Day 29): RQ6 is not answerable from the preregistered grid; the axis's own
+stated justification does not hold under the conditions it was actually swept at
+
+**What was found.** RQ6 promises a practitioner-facing "for a given noise level, what N is needed to
+reach a target accuracy" design chart. All 7 `samples_per_fit` conditions in
+`configs/main_campaign.toml` run at `noise_std = 0.0`; all 10 `noise_std` conditions run at
+`samples_per_fit = 60`. None of the three preregistered interaction grids
+(`arc_x_noise`, `amplitude_x_quadrature`, `amplitude_x_noise`) cross these two axes. Measured
+displacement-RMSE ratio from N=20 to N=1000 (a 50x sample increase), at the only noise level actually
+swept: 1.09-1.10x for the four general-conic fitters, 0.94x for Heydemann (slightly worse at higher
+N), and flat to 4 significant figures for Kasa, Taubin, and raw atan2. Full reproduction in
+`docs/WEEK5_PREFLIGHT_AUDIT.md`, finding P2.
+
+**The justification contradiction.** This document's own v2 revision (item 1, above) justified
+*adding* the `samples_per_fit` axis by citing "a measured 7x swing in mean center error (0.0201 at
+N=20 vs. 0.0028 at N=1000)." That 7x swing is a noise-averaging effect — more samples reduce a noisy
+fit's variance. The axis, once implemented, was swept entirely at zero noise, where that averaging
+benefit cannot appear by construction. The stated justification for the axis is contradicted by the
+axis as actually configured.
+
+**Why this was missed until now.** RQ6 was introduced by the same v2 revision that fixed finding F6
+("the preregistered research questions were unanswerable from the preregistered config") for
+`arc_fraction`, `hysteresis_magnitude`, and `photon_scale`. RQ6's own answerability against the
+resulting config was never independently checked — the same defect class F6 was written to eliminate
+reappeared inside the revision that eliminated it, and none of the two subsequent council reviews,
+the OSF registration, Day 21's gate, or the Week 3 review were built to check RQ-to-grid coverage as
+a category.
+
+**Response, per `llm-council` review.** RQ6 is declared **unanswered by the preregistered
+campaign.** The grid is not backfilled or amended to retroactively support the question — an
+`llm-council` advisor's specific framing: "don't backfill a grid to match a promise already
+published in the prereg; that's re-running until you get the RQ you wanted." A supplementary
+`samples_per_fit x noise_std` interaction grid, protocol committed before any code per
+`docs/SUPPLEMENTARY_PROTOCOLS.md`, is legitimate specifically because it ADDS an interaction axis
+rather than editing the values of any existing preregistered condition. Its results are reported as
+supplementary throughout, never blended into a preregistered table without an explicit provenance
+label.
+
+**What was NOT changed.** No preregistered condition's parameter values. No other research question.
+
+### D7 — 2026-07-29 (Day 29): RQ5's grid never reached the "many-fringe" regime its own
+research question names; the narrowing was previously undocumented
+
+**What was found.** `arc.build_arc_ramp` sets total phase excursion to `arc_fraction * 2 * pi`, so
+`arc_fraction = 1.0` — the top of the preregistered `[0.02, 1.0]` range — is exactly one 2*pi cycle,
+not "many fringes." `docs/experimental_design.md` re-describes the range top as "full-circle ramp
+measurement," which is accurate on its own terms but a quiet narrowing from RQ5's original framing
+("many-fringe ramp vs. small steady-state vibration"), never previously flagged as a deviation.
+
+**Why this is lower severity than D5/D6.** This is a scoping gap, not a measurement bug: the
+sub-fringe half of RQ5 is fully covered by the existing grid, and is where this document's own RQ1b
+headline result already lives. The many-fringe half of the question was simply never attempted.
+
+**Response.** RQ5 is answered, and must be described, as covering **only the sub-fringe regime**
+(`arc_fraction` from a 0.72-degree arc up to exactly one full cycle). The grid is not extended to
+multi-fringe conditions as part of this deviation — per `docs/WEEK5-6_EXECUTION_PLAN.md` Task 7,
+`arc_fraction` is the axis carrying the campaign's headline result (RQ1b), making any post-hoc
+extension to it the single highest forking-paths exposure available in this project. A many-fringe
+extension, if pursued, is future work under its own preregistration, not a Week 5 patch to this one.
+
+**What was NOT changed.** No swept value on `arc_fraction` or any other axis. Only the stated scope
+of what RQ5 has been answered over.
