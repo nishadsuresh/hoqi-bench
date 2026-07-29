@@ -139,9 +139,12 @@ to be true.
 When Day 28's RQ1/RQ2 analysis reports results:
 - A result on the classic axes (`amplitude_ratio`, `quadrature_error_rad`, `dc_offset`)
   matching the Category 1 prediction above is captioned as a construction check ("Heydemann,
-  Halir & Flusser, Fitzgibbon, Taubin, and Köning all recover near-ceiling accuracy here, as
+  Halir & Flusser, Fitzgibbon, and Köning all recover near-ceiling accuracy here, as
   structurally guaranteed -- see `docs/STRUCTURAL_ADVANTAGE_PREDICTIONS.md`"), not presented
-  as a ranking finding.
+  as a ranking finding. **Taubin is NOT in this list** (corrected here, Week 6 doc audit,
+  2026-07-29 -- this example caption still named Taubin after D1, below, established it is a
+  circle fit with no structural claim on these axes; D1 fixed the Per-axis Predictions section
+  but this restatement was missed at the time).
 - A result on `noise_std`, `arc_fraction`, or `samples_per_fit` is checked against its
   Category 2 prediction and reported as CONFIRMED or CONTRADICTED, either of which is a real
   finding.

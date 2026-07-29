@@ -23,6 +23,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from hoqi_bench.config import load_sweep_config
+from hoqi_bench.resolve import iter_conditions
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -63,3 +64,27 @@ def test_n_seeds_is_consistent_across_config_and_docs() -> None:
     # agree with the config, not just with each other (this is the exact
     # shape of finding F7: two sections of the SAME document disagreeing).
     assert f"Seeds per condition**: {n_seeds}" in design
+
+
+def test_sub_fringe_condition_count_is_consistent_across_source_and_docs() -> None:
+    """`harmonics.py`'s own module docstring cites the number of
+    preregistered conditions with `arc_fraction < 1.0` (the reason a
+    least-squares projection is used instead of an FFT). Week 6 doc audit,
+    2026-07-29: this had drifted to "99" -- the correct count, recomputed
+    from `configs/main_campaign.toml` via `resolve.iter_conditions`, is 88
+    (8 from the `arc_fraction` OFAT axis + 80 from the `arc_x_noise` grid's
+    own sub-fringe points). The wrong number had been copied into SOURCE
+    CODE, not just a planning document -- this test makes sure a future
+    config change can't let it drift silently again, matching this
+    project's existing total_runs/n_seeds guards above.
+    """
+    config = load_sweep_config(REPO_ROOT / "configs" / "main_campaign.toml")
+    conditions = iter_conditions(config)
+    n_sub_fringe = sum(1 for c in conditions if c.resolved["arc_fraction"] < 1.0)
+
+    harmonics_source = _read("src/hoqi_bench/harmonics.py")
+    assert f"{n_sub_fringe} of the" in harmonics_source, (
+        f"harmonics.py's module docstring does not state the current sub-fringe "
+        f"condition count ({n_sub_fringe}, recomputed from configs/main_campaign.toml) "
+        f"-- likely stale prose after a config change (Week 6 doc audit, 2026-07-29)"
+    )

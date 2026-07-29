@@ -62,7 +62,8 @@ floor on this axis, so their fits are not among the 7 being described here at al
 
 **[PREREGISTERED, radial inflation only]** The main campaign's `hysteresis_magnitude` axis measures
 direction-**independent** radial inflation (deviation D5) — a real, non-conic distortion (33.9×
-displacement-RMSE dynamic range for conic fitters), but not hysteresis.
+displacement-RMSE dynamic range for Fitzgibbon, Halir & Flusser, and Köning; Heydemann alone is
+17.9×, not a uniform figure across all four conic fitters), but not hysteresis.
 
 **[SUPPLEMENTARY]** A bidirectional (triangle-wave) waveform, protocol committed before any code
 (`docs/SUPPLEMENTARY_PROTOCOLS.md` Protocol 1), actually exercises direction reversal.

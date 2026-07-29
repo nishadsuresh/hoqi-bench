@@ -19,10 +19,11 @@ Požar & Možina (2011), and a steady stream of 2017-2025 papers each propose in
 improvements. None of this is novel to claim.
 
 **Not a novel ellipse-fitting algorithm.** Every method implemented here (Kasa, Heydemann,
-Halir & Flusser, Fitzgibbon, Taubin, and — if time allows — Köning/Wimmer/Witkovský's
-nonlinear-constraint fit) is taken from existing, cited literature, faithfully implemented
-(including known fragilities, per Day 3's findings) — not modified or "improved" as part of this
-project's contribution.
+Halir & Flusser, Fitzgibbon, Taubin, and Köning/Wimmer/Witkovský's errors-in-variables fit —
+all seven were built, per `src/hoqi_bench/methods/__init__.py`'s `METHOD_REGISTRY`; the "if
+time allows" conditional here was stale, corrected Week 6 doc audit, 2026-07-29) is taken from
+existing, cited literature, faithfully implemented (including known fragilities, per Day 3's
+findings) — not modified or "improved" as part of this project's contribution.
 
 ## What this project IS claiming
 

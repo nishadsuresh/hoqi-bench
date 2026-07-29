@@ -114,7 +114,13 @@ At the classic-axis baselines (well-conditioned per `harmonics.HARMONIC_CONDITIO
 filtered to non-failed fits per the D2 aggregation caveat):
 
 - `raw_atan2` carries first-order cyclic error an order of magnitude above every corrected method
-  (0.026–0.028 rad vs. 0.00006–0.0003 rad) — expected, since it corrects nothing.
+  **on `amplitude_ratio` and `quadrature_error_rad`** (0.027–0.028 rad vs. 5.6×10⁻⁵–1.28×10⁻⁴ rad,
+  corrected here Week 6 doc audit, 2026-07-29 — the upper end of the corrected-method range was
+  previously overstated as 0.0003, roughly 2.3× the actual maximum) — expected, since it corrects
+  nothing. **This does NOT hold on `dc_offset`**: there, `raw_atan2` (7.5×10⁻⁵ rad) is actually
+  *lower* than five of the six corrected methods (1.16×10⁻⁴–1.18×10⁻⁴ rad), only above Heydemann
+  (5.9×10⁻⁵ rad) — the "order of magnitude above every corrected method" claim was previously
+  stated as if it held on all three classic axes uniformly; it does not.
 - **Kasa and Taubin carry SECOND-order cyclic error roughly two orders of magnitude above their own
   first-order error** (0.048–0.069 rad second-order vs. 0.0001 rad first-order), while the four
   general-conic fitters show no such asymmetry.

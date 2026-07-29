@@ -4,6 +4,18 @@
 > (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use
 > checkbox (`- [ ]`) syntax for tracking. Read §0 in full before touching any code.
 
+> **Historical document, two corrections noted here rather than throughout the body (Week 6 doc
+> audit, 2026-07-29):** this plan's several references to "99 of the campaign's 359 conditions"
+> having `arc_fraction < 1.0` were wrong when written — the correct count, recomputed from
+> `configs/main_campaign.toml`, is **88** (fixed at the source in `src/hoqi_bench/harmonics.py`'s
+> own docstring, which had copied the same error, and guarded by
+> `tests/test_docs_consistency.py::test_sub_fringe_condition_count_is_consistent_across_source_and_docs`).
+> Separately, this plan's "what already exists" table instructs using `fit_by_name` for the sweep
+> runner's fit call — as of Week 5 Task 3 (`docs/WEEK5_PREFLIGHT_AUDIT.md` finding P3),
+> `runner.py::run_condition` calls `timed_fit_by_name` instead, since `fit_by_name` never populated
+> `runtime_s`. This document's own body is left as originally written below, as a record of the
+> plan at the time it was executed — not edited to match the current state.
+
 **Goal:** Take hoqi-bench from "seven validated methods and a metrics layer" to "the full
 125,650-run campaign has been executed reproducibly and RQ1/RQ2 are answered," without
 introducing a single result that is an artifact rather than a finding.

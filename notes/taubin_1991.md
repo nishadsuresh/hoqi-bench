@@ -35,7 +35,7 @@ unweighted algebraic distance.
   Any comparative claim about Taubin specifically in the eventual paper should be checked against
   what `hoqi-bench`'s own Day 20/21 results actually show, not against an assumed prior expectation
   from this thin note.
-- If this method is in fact implemented (not cut per the "if behind schedule" priority order,
-  where stretch methods are the second thing cut), getting real access to the source paper before
-  Day 20 would materially improve the implementation's fidelity to Taubin's actual formulation
-  rather than a generic "Taubin-style" approximation.
+- Taubin WAS implemented (`src/hoqi_bench/methods/taubin.py`; the conditional here was stale,
+  corrected Week 6 doc audit, 2026-07-29). Real access to the source paper before Day 20 would
+  still materially improve the implementation's fidelity to Taubin's actual formulation rather
+  than a generic "Taubin-style" approximation, if revisited.

@@ -60,8 +60,11 @@ generates.
 
 **Is it still a real distortion?** Yes — adding a constant to an ellipse's polar radius does not
 yield another ellipse, so this is a genuine non-conic perturbation, and the campaign's measured
-response to it is real (33.9× displacement-RMSE dynamic range for the four conic fitters over
-`hysteresis_magnitude ∈ [0, 0.2]`). It is simply **not the phenomenon RQ3 names.**
+response to it is real: 33.9× displacement-RMSE dynamic range for Fitzgibbon, Halir & Flusser, and
+Köning over `hysteresis_magnitude ∈ [0, 0.2]` — **Heydemann alone is 17.9×, roughly half the other
+three's figure, not a uniform "conic fitters" number** (precision added Week 6 doc audit,
+2026-07-29; an earlier version of this line stated 33.9× for all four without checking each one
+individually). It is simply **not the phenomenon RQ3 names.**
 
 **Why it was missed.** `tests/test_hysteresis.py` builds its test waveform with a private helper,
 `_up_and_down_iq()`, which is an explicit **sinusoid** (`2e-6 * sin(2π · 2 · t)`) — its own docstring

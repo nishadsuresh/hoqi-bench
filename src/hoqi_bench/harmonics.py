@@ -12,8 +12,10 @@ on the ellipse. The residual therefore looks like
 first- and second-order cyclic errors every calibration paper reports.
 
 Why least squares and NOT an FFT (a real decision, measured before being
-made): an FFT assumes the record spans a whole number of periods. 99 of the
-main campaign's 359 conditions have `arc_fraction < 1.0`, where that is
+made): an FFT assumes the record spans a whole number of periods. 88 of the
+main campaign's 359 conditions have `arc_fraction < 1.0` (Week 6 doc audit,
+2026-07-29, corrected from an earlier "99" that miscounted the
+`arc_x_noise` grid's own 80 sub-fringe points), where that is
 false and the FFT's bins stop corresponding to the harmonics of interest.
 Measured on a residual with injected A1=0.05, A2=0.03: at
 `arc_fraction=0.5` the FFT reports A1=0.0311 and A2=0.0074 (38% and 75%
