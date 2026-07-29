@@ -47,10 +47,39 @@ A minor fourth point (Heydemann's mechanism explanation bordering on asserted-as
 already adequately hedged with "consistent with" language; tightened slightly for consistency with
 the corrected framing elsewhere in the document.
 
-## Task 8b: clean-clone reproduction check
+## Task 8b: clean-clone reproduction check — passed in full
 
-Per the plan, this must pass before Week 6 begins. Report follows in a separate section below, run
-against the pushed state of this commit.
+The check this project's entire CI investment (Days 7, 26) exists for. Cloned `origin/main` at
+`cc3e0cd` (this day's push) into a fresh directory outside the working tree, built a genuinely new
+venv via `uv venv` (the existing dev venv's own creation tool, per Day 26's precedent — `python -m
+venv` failed outright on this machine: `python3.10-venv` isn't installed system-wide, meaning the
+dev venv could not be recreated from scratch by the documented `pip`-based instructions alone, only
+by `uv`), and installed with `pip install -e ".[dev,validation]"` per the README's own documented
+command.
+
+- **First run**: 244 passed, 1 skipped, 2 xfailed — the skip was
+  `test_external_cross_validation.py`, correctly skipped because the `validation` extra
+  (`lsq-ellipse`, `ellipsinator`) wasn't installed on the first pass. Not a defect: expected,
+  documented behavior, confirmed by reinstalling with `.[dev,validation]` and re-running.
+- **Second run, full extras**: **248 passed, 2 xfailed** — exact match to the dev environment's own
+  count, both xfails correctly pointing at D5/D6 by name, not silent failures.
+- `ruff check` and `mypy --strict`: both clean, zero configuration differences from the dev venv.
+- `tests/test_reproducibility.py::test_smoke_campaign_matches_reference_values_within_tolerance`
+  explicitly re-run in isolation: **passed** — this WSL sandbox reproduces the committed reference
+  values within the documented `rtol=1e-9`/`atol=1e-15` tolerance (D4), on a venv built from nothing
+  but the pushed repo, the pinned dependency versions, and the committed reference CSV.
+
+**One real, worth-recording finding, not a defect**: this machine cannot recreate the project's own
+existing dev venv using the literal command an external contributor following only the README would
+run (`python -m venv` + `pip install`) — `python3.10-venv` is absent system-wide, so `python -m venv`
+fails before `pip` even enters the picture. `uv` is already this project's own fallback for exactly
+this class of problem (Day 26's journal, for a different reason — Python 3.11 testing). Not fixed
+today (a system package install is outside this project's scope, and `uv`'s presence as a working
+alternative means the actual reproducibility claim — a correct venv can be built and everything
+passes — still holds); flagged for Day 37's README rewrite to document `uv venv` as the primary
+instruction on this class of system, not an aside.
+
+Cleaned up: temporary clone and venv both removed after the check completed.
 
 ## Verification
 
