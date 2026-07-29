@@ -336,25 +336,43 @@ def test_every_research_question_has_its_required_axes(rq: str) -> None:
     assert not missing, f"{rq} requires axes {missing}, absent from configs/main_campaign.toml"
 
 
+SUPPLEMENTARY_N_X_NOISE_CONFIG = REPO_ROOT / "configs" / "supplementary_n_x_noise.toml"
+
+
+def _has_n_x_noise_interaction(config_path: Path) -> bool:
+    config = load_sweep_config(config_path)
+    required_pair = _RQ_REQUIRED_INTERACTIONS["RQ6"]
+    return any(required_pair <= set(grid_axes) for grid_axes in config.grids.values())
+
+
 def test_rq6_requires_a_grid_the_preregistered_config_does_not_have() -> None:
     """THE guard against P2, stated as directly as possible: RQ6 needs a
     `samples_per_fit x noise_std` interaction grid, which does not exist
     in `configs/main_campaign.toml` (docs/PREREGISTRATION.md deviation
-    D6). Marked `xfail` for the same reason as the hysteresis test above
-    -- this is a known, dated, recorded defect, expected to start passing
-    once Week 5 Task 6's supplementary N x noise config exists.
+    D6). Marked `xfail` -- this is a known, dated, recorded defect. See
+    `test_supplementary_n_x_noise_config_has_the_required_interaction`
+    below for the sibling check confirming the FIX exists, against Week
+    5 Task 6's supplementary config.
     """
-    config = load_sweep_config(MAIN_CAMPAIGN_CONFIG)
-    required_pair = _RQ_REQUIRED_INTERACTIONS["RQ6"]
-    has_interaction = any(required_pair <= set(grid_axes) for grid_axes in config.grids.values())
-    if not has_interaction:
+    if not _has_n_x_noise_interaction(MAIN_CAMPAIGN_CONFIG):
         pytest.xfail(
             "known defect, docs/PREREGISTRATION.md deviation D6: no "
             "samples_per_fit x noise_std interaction grid exists in the "
             "preregistered config, so RQ6's N-vs-noise design chart cannot be "
-            "produced. Expected to pass once pointed at Week 5 Task 6's "
-            "supplementary config."
+            "produced. Fixed for the SUPPLEMENTARY experiment only, per D6 -- "
+            "see test_supplementary_n_x_noise_config_has_the_required_interaction. "
+            "The preregistered campaign itself is never re-run to fix this."
         )
+
+
+def test_supplementary_n_x_noise_config_has_the_required_interaction() -> None:
+    """The other half of P2's fix (Week 5 Task 6, Day 34): confirms
+    `configs/supplementary_n_x_noise.toml` actually has the
+    samples_per_fit x noise_std interaction grid the preregistered config
+    lacks. Expected to PASS, unlike the sibling test above -- if it
+    starts failing, the supplementary config has stopped providing what
+    it claims to."""
+    assert _has_n_x_noise_interaction(SUPPLEMENTARY_N_X_NOISE_CONFIG)
 
 
 # ---- 5. Preregistered/supplementary provenance guard ----------------------

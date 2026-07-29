@@ -1,0 +1,35 @@
+# Supplementary N x noise_std interaction grid -- Week 5 Task 6, Day 34.
+# NOT part of the preregistered campaign. Protocol committed BEFORE any
+# code in docs/SUPPLEMENTARY_PROTOCOLS.md Protocol 3, per
+# docs/WEEK5-6_EXECUTION_PLAN.md §0.6.
+#
+# Adds the ONE interaction grid missing from configs/main_campaign.toml
+# that RQ6 (an N-vs-noise design chart) needs -- docs/PREREGISTRATION.md
+# deviation D6. Both axes here use ONLY main_campaign.toml's own existing
+# values; no new grid point is invented on either axis. Everything else
+# (baseline, methods, seeds) is identical to the preregistered campaign.
+
+methods = ["raw_atan2", "kasa", "heydemann", "halir_flusser", "fitzgibbon", "taubin", "koning_wimmer_witkovsky"]
+n_seeds = 50
+tolerance = 0.01
+
+[baseline]
+mean_intensity = 1.0
+contrast = 0.9
+amplitude_ratio = 1.1
+quadrature_error_rad = 0.1
+dc_offset = 0.02
+arc_fraction = 1.0
+noise_std = 0.0
+samples_per_fit = 60
+hysteresis_magnitude = 0.0
+photon_scale = 1.0e7
+
+[axes]
+# Empty deliberately -- this experiment's whole point is the INTERACTION
+# grid below, not a new OFAT axis. `config.py` requires the [axes] key to
+# be present (even empty) but does not require it to be non-empty.
+
+[grids.n_x_noise]
+samples_per_fit = [20, 40, 60, 100, 200, 500, 1000]
+noise_std = [0.0, 0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.08, 0.1]
