@@ -72,7 +72,7 @@ from hoqi_bench.aggregate import outcome_from_fit  # noqa: E402
 from hoqi_bench.config import SweepConfig  # noqa: E402
 from hoqi_bench.forward_model import HENE_WAVELENGTH_M  # noqa: E402
 from hoqi_bench.harmonics import cyclic_error  # noqa: E402
-from hoqi_bench.methods import fit_by_name  # noqa: E402
+from hoqi_bench.methods import timed_fit_by_name  # noqa: E402
 from hoqi_bench.resolve import ResolvedCondition, iter_conditions  # noqa: E402
 from hoqi_bench.simulate import simulate_condition  # noqa: E402
 
@@ -132,7 +132,17 @@ def run_condition(
     for method_name in methods:
         for seed_index in range(n_seeds):
             signal = simulate_condition(condition.resolved, condition.name, seed_index)
-            result = fit_by_name(
+            # timed_fit_by_name, not fit_by_name: populates FitResult.runtime_s
+            # (Week 5 Task 3, Day 31 -- docs/WEEK5_PREFLIGHT_AUDIT.md finding
+            # P3, previously null in 100% of rows because this call site never
+            # went through methods.base.timed_fit). Note this populates
+            # runtime_s under WHATEVER execution mode run_condition is called
+            # in -- under ProcessPoolExecutor (the default parallel campaign
+            # path) that measures scheduler contention as much as algorithm
+            # cost, so it is not treated as the authoritative cost figure;
+            # see scripts/rq1_cost_measurement.py for the serial,
+            # single-worker pass that IS.
+            result = timed_fit_by_name(
                 method_name,
                 signal.i,
                 signal.q,

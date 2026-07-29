@@ -168,6 +168,67 @@ holds `amplitude_ratio=1.1` and `quadrature_error_rad=0.1` fixed at their own no
 values, which these three structurally-uncorrecting methods can never get below tolerance on,
 regardless of how much arc is visible.
 
+## Cost — RQ1's fourth dimension, added Day 31 (previously missing entirely)
+
+**Not part of the original draft.** RQ1 was preregistered to compare methods on "displacement
+accuracy, cyclic-error harmonics, robustness, **and cost**," but `runner.py` never wired the timing
+instrumentation up (`docs/WEEK5_PREFLIGHT_AUDIT.md` finding P3) — `runtime_s` was null in 100% of
+the main campaign's 125,650 rows, and this document's first draft omitted cost entirely without
+flagging the gap. Fixed Day 31 (`src/hoqi_bench/methods/__init__.py`'s new `timed_fit_by_name`); see
+`docs/WEEK3_METHOD_CONTRACT.md`'s Day 29 defect report for the fix itself.
+
+**Checked before adding this section, not assumed**: does any existing claim above depend on cost or
+change once cost is real? No — grepped the full document; every prior mention of "iteration" refers
+to Köning's convergence behavior (RQ2), never to timing. This section is purely additive.
+
+**Measurement design.** The main campaign's own `runtime_s` values (now populated) are NOT used as
+the authoritative cost figures — they were recorded under `ProcessPoolExecutor` contention, which
+measures scheduler behavior as much as algorithm cost. Instead: a **separate serial, single-worker
+pass** (`scripts/rq1_cost_measurement.py`), BLAS pinned to 1 thread, over 9 of the 359 preregistered
+conditions — the full baseline (`axis:amplitude_ratio=1.1`, the one condition where every axis sits
+at its own baseline value) plus the last configured value of each of the 8 OFAT axes, selected
+structurally (by config list position) before any cost number was looked at.
+
+**At baseline, cost spans ~53x, and the ordering is NOT the same as the accuracy ordering above:**
+
+| method | mean (µs) | std (µs) | × raw_atan2 |
+|---|---|---|---|
+| raw_atan2 | 3.17 | 1.27 | 1.0× |
+| kasa | 21.31 | 4.34 | 6.7× |
+| heydemann | 32.96 | 4.36 | 10.4× |
+| halir_flusser | 74.00 | 17.74 | 23.3× |
+| taubin | 106.22 | 53.91 | 33.5× |
+| fitzgibbon | 128.79 | 66.46 | 40.6× |
+| koning_wimmer_witkovsky | 167.99 | 28.24 | 53.0× |
+
+Kasa and Taubin are the cheapest correction-capable methods (matching their simpler 3-parameter
+circle fit vs. the 5-parameter general-conic fitters) — the same circle/ellipse split
+`docs/STRUCTURAL_ADVANTAGE_PREDICTIONS.md` already uses to explain their accuracy profile on
+`arc_fraction`/`samples_per_fit`, now showing up as a genuinely separate cost advantage too, not
+merely a robustness one.
+
+**The real finding: Köning's cost is dramatically, non-uniformly sensitive to `samples_per_fit`.**
+At the baseline (N=60), Köning is the most expensive method at 53× the floor — expensive, but the
+same order of magnitude as Fitzgibbon. At `samples_per_fit=1000`, Köning costs **19,470 µs — a
+116× increase over its own baseline** — while Kasa (a representative non-iterative method) only
+increases 2.0× over the same N change. This is not surprising in kind (Köning is the one iterative,
+errors-in-variables method, and each of its iterations does linear algebra that scales with N,
+unlike a single-shot closed-form solve) but the *magnitude* of the gap was not measured before this
+pass. **Practical consequence**: `docs/PREREGISTRATION.md`'s RQ6 (an N-vs-noise design chart, being
+answered separately as a supplementary result per deviation D6) should report Köning's cost
+alongside any accuracy recommendation at high N — a chart that recommends more samples for accuracy
+without also showing this cost curve would be incomplete for a practitioner deciding whether to
+actually run Köning at large N.
+
+**The 116× is per-iteration cost, not iteration count — checked directly, not left as an open
+question, since the data needed was already in hand.** Köning's own `n_iter_mean` at
+`samples_per_fit=1000` is **2.64 — slightly LOWER than its 3.00-iteration baseline**, while
+per-iteration cost rises from ~56 µs/iteration at baseline to **~7,375 µs/iteration at N=1000** (a
+~130× increase). So the practical N-vs-cost relationship for Köning is driven entirely by each
+iteration doing more work at larger N (consistent with an errors-in-variables solve whose per-step
+linear algebra scales with sample count), not by needing more iterations to converge — a real,
+checked distinction, not an assumption.
+
 ## What is statistically significant vs. practically meaningful
 
 Pairwise significance (Bonferroni-corrected paired t-test, Day 25) found 13–20 of 21 comparisons

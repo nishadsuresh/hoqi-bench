@@ -332,37 +332,45 @@ def test_preregistered_results_tree_has_not_been_touched_by_supplementary_runs()
     Global Constraints): `results/raw/` and `results/main_campaign_summary.csv`
     are read-only for the rest of the project. A supplementary run must
     write to `results/supplementary/<experiment_name>/`, a physically
-    separate tree, so no later analysis script can accidentally blend
-    preregistered and post-hoc data into one frame without an explicit
-    provenance column marking the difference.
+    separate tree, so a directory-configuration mistake (a script's
+    OUTPUT_DIR accidentally pointed at `results/raw/` itself, or nested
+    inside it) cannot silently overwrite or blend into the preregistered
+    data.
 
-    This test checks the STRUCTURAL invariant (separate directories don't
-    collide), not that every analysis script actually adds a provenance
-    column -- that is checked per-script in the tasks that write
-    supplementary analyses (Week 5 Tasks 4 and 6), since a generic static
-    check cannot verify a script's own pandas logic.
+    Design decision: does NOT require `results/raw/` to exist (its
+    contents are gitignored -- a fresh clone legitimately has no
+    `results/raw/` directory; an earlier version of this test asserted
+    `raw_dir.is_dir()` unconditionally and failed in CI for exactly this
+    reason, `docs/journal/day29.md`).
 
-    Design decision: does NOT require `results/raw/` to exist. Its
-    contents (`*.parquet`, 9.5MB of regenerable per-condition sweep
-    output) are deliberately gitignored (`.gitignore`'s own documented
-    convention: only large, regenerable raw output is excluded, final
-    figures/tables are committed deliverables) -- so a fresh clone or a
-    CI checkout legitimately has no `results/raw/` directory at all. An
-    earlier version of this test asserted `raw_dir.is_dir()`
-    unconditionally and failed in CI for exactly this reason (own defect,
-    caught same-day: `docs/journal/day29.md`). The invariant this test
-    actually needs to hold -- no supplementary run may write a
-    filename that collides with a preregistered one -- is checkable
-    without requiring either directory to be present.
+    Design decision, REVISED Day 31 (`docs/journal/day31.md`): an earlier
+    version of this test also asserted no `*.parquet` FILENAME may appear
+    in both `results/raw/` and `results/supplementary/`. That was wrong,
+    caught by real usage: Day 31's `scripts/rq1_cost_measurement.py`
+    deliberately re-runs several of the SAME preregistered conditions
+    (same condition names, hence the same filenames via
+    `runner.condition_filename`) into `results/supplementary/
+    cost_measurement/`, by design -- measuring cost under a different
+    execution mode (serial vs. parallel) for the identical preregistered
+    input. That is exactly the point of a supplementary cost pass, not a
+    bug, and it is completely safe: the two files live in two DIFFERENT,
+    NON-NESTED directories, so no reader that globs a specific directory
+    (which is how `load_results` and every script in this project reads
+    results) could ever confuse them. A shared BASENAME across separate
+    directories was never the actual risk this test's docstring names --
+    a script writing INTO `results/raw/` is. Checked directly below
+    instead: the two trees are distinct paths and neither is nested
+    inside the other, which is what a misconfigured OUTPUT_DIR would
+    violate.
+
+    Whether an individual supplementary analysis script correctly adds a
+    provenance column before blending its own output with preregistered
+    data is checked per-script in the tasks that write those analyses
+    (Week 5 Tasks 4 and 6), since a generic static check cannot verify a
+    script's own pandas logic.
     """
-    raw_dir = REPO_ROOT / "results" / "raw"
-    supplementary_dir = REPO_ROOT / "results" / "supplementary"
-    if raw_dir.is_dir() and supplementary_dir.exists():
-        raw_files = {p.name for p in raw_dir.glob("*.parquet")}
-        supplementary_files = {p.name for p in supplementary_dir.rglob("*.parquet")}
-        collisions = raw_files & supplementary_files
-        assert not collisions, (
-            f"filenames {collisions} appear in both results/raw/ and "
-            f"results/supplementary/ -- a supplementary run may have written "
-            f"into or collided with the preregistered results tree"
-        )
+    raw_dir = (REPO_ROOT / "results" / "raw").resolve()
+    supplementary_dir = (REPO_ROOT / "results" / "supplementary").resolve()
+    assert raw_dir != supplementary_dir
+    assert supplementary_dir not in raw_dir.parents
+    assert raw_dir not in supplementary_dir.parents

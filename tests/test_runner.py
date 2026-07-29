@@ -15,6 +15,7 @@ import hashlib
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 from hoqi_bench.config import load_sweep_config
 from hoqi_bench.resolve import iter_conditions
@@ -29,11 +30,32 @@ SMOKE_CONFIG = Path(__file__).parent.parent / "configs" / "smoke.toml"
 
 
 def _hash_directory(directory: Path) -> str:
-    """One hash over every produced file, in sorted filename order."""
+    """One hash over every produced file's SUBSTANTIVE contents, in sorted
+    filename order.
+
+    Excludes `runtime_s` (Week 5 Task 3, Day 31, added when
+    `docs/WEEK5_PREFLIGHT_AUDIT.md` finding P3 was fixed --
+    `run_condition` now calls `timed_fit_by_name`, so `runtime_s` carries a
+    real wall-clock value instead of always being `None`). Wall-clock time
+    is not reproducible even for the IDENTICAL computation on the IDENTICAL
+    machine in the same process -- unlike `test_reproducibility.py`'s D4
+    finding (genuine cross-platform/cross-invocation floating-point drift,
+    itself real information), a differing `runtime_s` between two runs of
+    this test is not new information about determinism, it is what timing
+    a real clock always does. `test_reproducibility.py`'s own
+    `_NUMERIC_COLUMNS` already excludes `runtime_s` from its comparison for
+    the same reason -- this brings `_hash_directory` in line with that
+    existing precedent rather than introducing a new one.
+
+    Confirmed directly before this fix, not assumed: loading two separate
+    runs' results and comparing column-by-column showed `runtime_s` is the
+    ONLY column that ever differs (docs/journal/day31.md).
+    """
     digest = hashlib.sha256()
     for path in sorted(directory.glob("*.parquet")):
+        frame = pd.read_parquet(path).drop(columns=["runtime_s"])
         digest.update(path.name.encode())
-        digest.update(path.read_bytes())
+        digest.update(frame.to_csv(index=False).encode())
     return digest.hexdigest()
 
 
@@ -111,6 +133,24 @@ def test_schema_and_row_count_are_exact(tmp_path: Path) -> None:
     assert tuple(frame.columns) == RESULT_COLUMNS
     expected = len(iter_conditions(config)) * len(config.methods) * config.n_seeds
     assert len(frame) == expected
+
+
+def test_runtime_s_is_populated_and_positive_for_every_row(tmp_path: Path) -> None:
+    """Direct regression test for `docs/WEEK5_PREFLIGHT_AUDIT.md` finding
+    P3 (Day 31 fix): before this task, `run_condition` called `fit_by_name`
+    directly and `runtime_s` was null in 100% of the main campaign's
+    125,650 rows, failing silently. Confirms the fix end-to-end through
+    `run_campaign`, not just at `timed_fit_by_name`'s own unit level
+    (`tests/test_methods_registry.py`) -- this is the path that actually
+    matters, since `run_condition` is what the real campaign calls.
+    """
+    config = load_sweep_config(SMOKE_CONFIG)
+    output = tmp_path / "out"
+    run_campaign(config, output, n_workers=1, resume=False)
+
+    frame = load_results(output)
+    assert frame["runtime_s"].notna().all(), "runtime_s is null for at least one row"
+    assert (frame["runtime_s"] >= 0.0).all(), "runtime_s has a negative value for at least one row"
 
 
 def test_condition_filename_is_windows_safe() -> None:

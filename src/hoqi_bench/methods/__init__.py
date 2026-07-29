@@ -41,6 +41,43 @@ METHOD_REGISTRY: dict[str, PhaseRecoveryMethod] = {
 }
 
 
+def _resolve_fit_call(
+    method_name: str,
+    intensity_i: FloatArray,
+    intensity_q: FloatArray,
+    *,
+    mean_intensity: float,
+) -> tuple[PhaseRecoveryMethod, tuple[FloatArray, FloatArray], dict[str, float]]:
+    """Resolves a method's `fit()` callable plus the exact positional/keyword
+    arguments it should be called with -- the ONE place the registry's one
+    non-uniform calling convention (`raw_atan2` alone needs `mean_intensity`)
+    is handled, shared by both `fit_by_name` and `timed_fit_by_name` below
+    so the dispatch logic exists exactly once regardless of which of them a
+    caller needs.
+
+    Why this exists as a THIRD function rather than having
+    `timed_fit_by_name` call `fit_by_name` directly (Week 5 Task 3, Day 31):
+    `methods.base.timed_fit`'s signature is `(fit_fn: PhaseRecoveryMethod,
+    *args: FloatArray, **kwargs: object)` -- deliberately typed so `*args`
+    can only ever be signal arrays, which is what lets `mypy --strict`
+    catch a caller passing something that isn't fit data. `fit_by_name`
+    takes `method_name: str` as its own first argument, so
+    `timed_fit(fit_by_name, method_name, intensity_i, intensity_q, ...)`
+    does not type-check -- `method_name` would need to flow into
+    `*args: FloatArray`. Extracting the dispatch decision into its own
+    function, returning the resolved callable and its args separately,
+    lets both wrappers call `timed_fit`/`fit_fn` directly with only
+    `FloatArray` positional arguments, with the `raw_atan2` branch written
+    once instead of duplicated a fourth time (see `fit_by_name`'s own
+    Week 3 review history below for why a fourth copy is exactly the
+    regression this project has already paid for once).
+    """
+    fit_fn = METHOD_REGISTRY[method_name]
+    if method_name == raw_atan2.NAME:
+        return fit_fn, (intensity_i, intensity_q), {"mean_intensity": mean_intensity}
+    return fit_fn, (intensity_i, intensity_q), {}
+
+
 def fit_by_name(
     method_name: str,
     intensity_i: FloatArray,
@@ -78,10 +115,37 @@ def fit_by_name(
     default here would let a caller silently benchmark the baseline against
     a DC bias point the signal does not have.
     """
-    fit_fn = METHOD_REGISTRY[method_name]
-    if method_name == raw_atan2.NAME:
-        return fit_fn(intensity_i, intensity_q, mean_intensity=mean_intensity)
-    return fit_fn(intensity_i, intensity_q)
+    fit_fn, args, kwargs = _resolve_fit_call(
+        method_name, intensity_i, intensity_q, mean_intensity=mean_intensity
+    )
+    return fit_fn(*args, **kwargs)
+
+
+def timed_fit_by_name(
+    method_name: str,
+    intensity_i: FloatArray,
+    intensity_q: FloatArray,
+    *,
+    mean_intensity: float,
+) -> FitResult:
+    """`fit_by_name`, with `runtime_s` populated via `methods.base.timed_fit`
+    -- the wall-clock-timed counterpart `runner.py` should call so the
+    preregistered cost metric is actually recorded (Week 5 Task 3, Day 31;
+    `docs/WEEK5_PREFLIGHT_AUDIT.md` finding P3: `runner.py` previously
+    called `fit_by_name` directly, so `runtime_s` was null in 100% of the
+    125,650-fit main campaign).
+
+    Shares `_resolve_fit_call`'s dispatch logic with `fit_by_name` rather
+    than wrapping it, specifically so the ONE place runtime is measured
+    (`methods.base.timed_fit`, per `FitResult.runtime_s`'s own docstring)
+    stays true even for the method-by-name entry point -- see
+    `_resolve_fit_call`'s docstring for why `timed_fit(fit_by_name, ...)`
+    was not an option.
+    """
+    fit_fn, args, kwargs = _resolve_fit_call(
+        method_name, intensity_i, intensity_q, mean_intensity=mean_intensity
+    )
+    return timed_fit(fit_fn, *args, **kwargs)
 
 
 __all__ = [
@@ -91,4 +155,5 @@ __all__ = [
     "failed_result",
     "fit_by_name",
     "timed_fit",
+    "timed_fit_by_name",
 ]
