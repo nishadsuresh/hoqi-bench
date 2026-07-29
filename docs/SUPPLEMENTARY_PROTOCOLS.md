@@ -120,6 +120,56 @@ into `results/main_campaign_summary.csv` or any table built from it without an e
 
 ---
 
-## Protocol 2 — RQ6 supplementary: samples_per_fit x noise_std design chart
+## Protocol 2 — RQ4: what "equivalent noise" means for a Poisson-vs-Gaussian ranking comparison
 
-Not yet committed. Scheduled for Week 5 Task 6 (Day 34).
+**Committed:** 2026-07-29 (Day 33). Routed through `llm-council` per `docs/WEEK5-6_EXECUTION_PLAN.md`
+§0.4 item 1, before any analysis code was written. Unlike Protocols 1 and this document's other
+entries, RQ4 requires **no new campaign data** — both `photon_scale` (Poisson) and `noise_std`
+(Gaussian) axes were already run in the preregistered main campaign. This protocol governs an
+**analysis decision** over existing data, not a new experiment, but is recorded here anyway because
+the choice of "equivalence" is exactly the kind of judgment call that must be locked before results
+are inspected, to avoid picking whichever matching definition happens to produce the most interesting
+story.
+
+### The council's verdict
+
+5 advisors independently proposed four candidate definitions of "equivalent noise" (matched sigma,
+matched SNR, matched Fisher information/Cramér-Rao bound, and a no-matching within-axis-only
+comparison). Peer review, run across 3 independent reviewer passes, converged unanimously on two
+points: (1) the strongest response reframed the disagreement itself as the finding — report a
+**sensitivity matrix** across all matching definitions rather than defending one; (2) two advisors'
+rejection of the Fisher-information option, on the grounds that it requires committing to a specific
+estimator, was a real technical error, caught independently by all three reviewers — Cramér-Rao
+Fisher information is a property of the **measurement model** (the known signal shape and noise
+type), not of any particular correction algorithm, and is computable in closed form directly from
+the resolved condition's own parameters, without running any new simulation.
+
+**Chairman verdict, adopted as this project's protocol:**
+
+1. **Primary, zero-assumption analysis**: report each axis's own internal ranking (by mean
+   displacement RMSE, at each of that axis's own swept values) and check whether the ORDINAL order
+   changes anywhere within `photon_scale`'s own range and, separately, within `noise_std`'s own
+   range. This claim depends on no cross-axis equivalence choice at all.
+2. **Secondary sensitivity matrix**: pair `photon_scale` and `noise_std` grid points under three
+   independent matching rules — matched realized sigma (already measured, §2.5 of
+   `docs/WEEK5-6_EXECUTION_PLAN.md`), matched peak-intensity SNR, and matched total Fisher
+   information for phase (computed analytically from the shared classic-distortion baseline both
+   axes are actually run at — `src/hoqi_bench/fisher_information.py`). At each matched pair, compare
+   method rankings.
+3. **If a ranking difference appears under all three matching rules**, that is reported as a robust
+   finding — the conclusion does not depend on the specific equivalence assumption. **If it appears
+   under only one**, that is reported as the finding instead: an apparent ranking difference that is
+   an artifact of that one matching choice's own shape confound, not evidence about Poisson vs.
+   Gaussian noise itself.
+4. **Any claimed ranking flip, under any definition, is checked against this project's existing
+   `statistics.bootstrap_ci`/`pairwise_comparisons` machinery** before being reported as real — per
+   the peer review's unanimous addition (missed by all 5 initial advisors): a apparent flip must be
+   distinguished from ordinary seed-to-seed sampling noise, not read off a point-estimate table.
+
+### What this protocol does NOT do
+
+It does not compute Fisher information per-method or claim any of the 7 implemented estimators
+achieves the Cramér-Rao bound — CRB is used only as a scalar "how hard is this estimation problem"
+proxy for matching two different noise models to each other, exactly as the council's technical
+correction specifies. It does not re-run or modify any preregistered condition — both noise axes'
+existing data is read as-is.
