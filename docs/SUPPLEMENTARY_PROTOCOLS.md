@@ -173,3 +173,64 @@ achieves the Cramér-Rao bound — CRB is used only as a scalar "how hard is thi
 proxy for matching two different noise models to each other, exactly as the council's technical
 correction specifies. It does not re-run or modify any preregistered condition — both noise axes'
 existing data is read as-is.
+
+## Protocol 3 — RQ6 supplementary: `samples_per_fit x noise_std` design chart
+
+**Committed:** 2026-07-29 (Day 34), before `configs/supplementary_n_x_noise.toml` or any code
+implementing this grid existed.
+
+### Why this experiment exists
+
+`docs/PREREGISTRATION.md` deviation D6 (Day 29): RQ6 promises a practitioner-facing "for a given
+noise level, what N is needed to reach a target accuracy" design chart, but the preregistered
+`samples_per_fit` axis was swept entirely at `noise_std=0.0` and the `noise_std` axis entirely at
+`samples_per_fit=60` — no interaction grid exists, so the chart cannot be built from preregistered
+data. This experiment adds the missing interaction, legitimately, because it ADDS a new grid rather
+than editing any existing preregistered condition's values.
+
+### Grid
+
+`samples_per_fit x noise_std`, using **only the existing preregistered values of each axis** —
+`samples_per_fit = [20, 40, 60, 100, 200, 500, 1000]` (7 points),
+`noise_std = [0.0, 0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.08, 0.1]` (10 points) — no new grid
+points invented. Every other baseline parameter unchanged from `configs/main_campaign.toml`. Same 7
+methods, same 50 seeds (via `seeds.derive_seed`, unchanged). 70 conditions x 7 methods x 50 seeds =
+24,500 fits, ≈2.8 s measured against the equivalent-size preregistered grid.
+
+### Target-accuracy definition
+
+`reference_scale.PREREGISTERED_TOLERANCE_M` — the SAME fixed physical denominator D3 already
+established for the preregistered breakdown-threshold statistic on `amplitude_ratio` and
+`arc_fraction`. Reusing it here rather than inventing a second convention keeps this project's
+"anti-circularity" principle (D3: the denominator must not be a function of the noisy, fitted
+quantity being scored) consistent across every breakdown-style statistic in the project.
+
+### The scan-direction requirement, stated explicitly to avoid a real, easy-to-make mistake
+
+`statistics.breakdown_threshold` requires `parameter_values` in SCAN order, easiest-to-hardest, and
+does not validate or infer that order (an explicit caller contract, per that function's own
+docstring). The only existing call site (`scripts/rq1_rq2_analysis.py`) passes `amplitude_ratio` and
+`arc_fraction` in ASCENDING config order, because for those axes ascending happens to mean harder.
+**For `samples_per_fit`, the relationship is inverted: larger N is EASIER (lower error), not
+harder.** Passing N in the same ascending order as the only existing precedent would silently run
+the crossing search backward. This experiment's analysis script passes `samples_per_fit` in
+**descending** order (`[1000, 500, 200, 100, 60, 40, 20]`) explicitly, with this reasoning recorded
+at the call site, not left to be inferred from the only prior example in the codebase.
+
+### Metrics and output
+
+For each method and each `noise_std` value: the smallest `samples_per_fit` at which mean
+displacement RMSE (excluding outright failures, tracked separately per the preregistered
+convention) stays at or below `PREREGISTERED_TOLERANCE_M`, via `statistics.breakdown_threshold`'s
+existing three-outcome `BreakdownThreshold` type (`"found"` / `"broken_at_start"` [best N still
+exceeds tolerance] / `"no_breakdown_in_range"` [even worst N meets tolerance]) — reusing the exact
+type RQ2 already uses, not inventing a second convention for the same shape of question.
+
+### What this experiment does NOT do
+
+It is reported as **supplementary** throughout — a design chart built from post-hoc data, not a
+preregistered result — and is never blended into `results/main_campaign_summary.csv` or any table
+built from it without explicit labeling. Per `docs/RQ1_RQ2_ANALYSIS.md`'s Day 31 cost addition:
+Köning's cost scales dramatically and non-uniformly with `samples_per_fit` (116x at N=1000 vs.
+baseline, driven by per-iteration cost, not iteration count) — any accuracy recommendation this
+chart produces for Köning at high N is reported alongside that cost fact, not in isolation.
