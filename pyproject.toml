@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hoqi-bench"
-version = "0.1.0"
+version = "0.1.1"
 description = "Reproducible benchmark for phase-recovery and nonlinearity-correction methods in homodyne quadrature interferometry (HoQI)"
 readme = "README.md"
 requires-python = ">=3.10"

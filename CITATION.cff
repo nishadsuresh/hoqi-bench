@@ -6,7 +6,7 @@ type: software
 authors:
   - family-names: Suresh
     given-names: Nishad
-version: 0.1.0
+version: 0.1.1
 date-released: "2026-07-28"
 repository-code: "https://github.com/nishadsuresh/hoqi-bench"
 license: MIT
