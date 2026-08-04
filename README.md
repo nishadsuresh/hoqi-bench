@@ -27,6 +27,18 @@ CI green on a 3-OS × 2-Python reproducibility matrix. The preregistration is ex
 on OSF (https://osf.io/qyw6t, 2026-07-27; a pending amendment covers deviations D5-D7, added
 2026-07-29). Week 6 (packaging, PyPI, Zenodo DOI) is in progress.
 
+## Development & AI Assistance
+
+This is a self-directed project. I chose the topic, defined the research
+question and scope, made the design decisions, and evaluated the results.
+AI assistance (Anthropic's Claude) was used to structure the implementation
+and write the code. I directed the work and assessed the output; I did not
+write the implementation line by line.
+
+This disclosure was added on 2026-08-03 to accurately describe how the
+project was built.
+
+
 ## What this benchmark does NOT answer
 
 **Stated here, prominently, not as a footnote** — a project whose stated contribution is
